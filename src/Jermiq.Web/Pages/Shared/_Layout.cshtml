@@ -3,16 +3,16 @@
 @inject Microsoft.AspNetCore.Antiforgery.IAntiforgery Antiforgery
 @{
     var settings = await Catalog.GetSettingsAsync(Context.RequestAborted);
-    var title = ViewData["Title"] as string ?? "Ջերմիք";
-    var description = ViewData["Description"] as string ?? "Ջրատաքացուցիչներ, պահեստամասեր և մասնագիտական սպասարկում։";
-    var canonical = Seo.Url(ViewData["Canonical"] as string ?? Context.Request.Path.Value ?? "/");
+    var title = ViewData["Title"] as string ?? L["Ջերմիք"];
+    var description = ViewData["Description"] as string ?? L["Ջրատաքացուցիչներ, պահեստամասեր և մասնագիտական սպասարկում։"];
+    var canonical = Seo.PageUrl(ViewData["Canonical"] as string ?? Context.Request.Path.Value ?? "/");
     var noIndex = !Seo.IndexingEnabled || (ViewData["NoIndex"] as bool? ?? false);
     var csrf = Antiforgery.GetAndStoreTokens(Context).RequestToken;
     var path = Context.Request.Path.Value ?? "/";
     var ogImage = Seo.Url(ViewData["Image"] as string ?? "/images/hero.webp");
 }
 <!DOCTYPE html>
-<html lang="hy">
+<html lang="@L.Language">
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -21,9 +21,11 @@
     <meta name="robots" content="@(noIndex ? "noindex, nofollow" : "index, follow, max-image-preview:large")" />
     <meta name="csrf-token" content="@csrf" />
     <link rel="canonical" href="@canonical" />
+    @foreach (var language in ContentLocalizer.Languages)
+    { <link rel="alternate" hreflang="@language" href="@Seo.Url(L.Link(ViewData["Canonical"] as string ?? path, language))" /> }
     <meta property="og:type" content="@(ViewData["OgType"] as string ?? "website")" />
-    <meta property="og:locale" content="hy_AM" />
-    <meta property="og:site_name" content="Ջերմիք" />
+    <meta property="og:locale" content="@(L.Language == "en" ? "en_US" : L.Language == "ru" ? "ru_RU" : "hy_AM")" />
+    <meta property="og:site_name" content="@L["Ջերմիք"]" />
     <meta property="og:title" content="@title" />
     <meta property="og:description" content="@description" />
     <meta property="og:url" content="@canonical" />
@@ -44,40 +46,41 @@
     @if (path == "/") { <link rel="preload" as="image" href="/images/hero.webp" /> }
 </head>
 <body>
-<a href="#main" class="skip-link">Անցնել բովանդակությանը</a>
-<div class="topbar"><div class="container"><span>Ջրատաքացուցիչներ · Պահեստամասեր · Սպասարկում</span><span>Երաշխիք նաև մեր կատարած աշխատանքի համար</span></div></div>
+<a href="#main" class="skip-link">@L["Անցնել բովանդակությանը"]</a>
+<div class="topbar"><div class="container"><span>@L["Ջրատաքացուցիչներ · Պահեստամասեր · Սպասարկում"]</span><span>@L["Երաշխիք նաև մեր կատարած աշխատանքի համար"]</span></div></div>
 <header class="header">
     <div class="container header-main">
         <partial name="_Brand" />
-        <form class="search-box" action="/catalog" method="get"><input name="q" aria-label="Որոնել ապրանք կամ պահեստամաս" placeholder="Որոնել ապրանք, մոդել կամ պահեստամաս…" /><button aria-label="Որոնել" type="submit"><i data-icon="search"></i></button></form>
-        <div class="header-actions"><button type="button" class="text-link desktop-contact" data-request="callback">Զանգահարեք ինձ</button><button class="icon-btn" type="button" data-action="cart" aria-label="Պատվերի ցանկ"><i data-icon="bag"></i><span class="count" id="cart-count" hidden></span></button><button class="icon-btn mobile-menu" type="button" id="menu-toggle" aria-expanded="false" aria-controls="main-nav" aria-label="Բացել մենյուն"><i data-icon="menu"></i></button></div>
+        <form class="search-box" action="/catalog" method="get"><input type="hidden" name="lang" value="@L.Language" /><input name="q" aria-label="@L["Որոնել ապրանք կամ պահեստամաս"]" placeholder="@L["Որոնել ապրանք, մոդել կամ պահեստամաս…"]" /><button aria-label="@L["Որոնել"]" type="submit"><i data-icon="search"></i></button></form>
+        <div class="header-actions"><partial name="_LanguageSwitch" /><button type="button" class="text-link desktop-contact" data-request="callback">@L["Զանգահարեք ինձ"]</button><button class="icon-btn" type="button" data-action="cart" aria-label="@L["Պատվերի ցանկ"]"><i data-icon="bag"></i><span class="count" id="cart-count" hidden></span></button><button class="icon-btn mobile-menu" type="button" id="menu-toggle" aria-expanded="false" aria-controls="main-nav" aria-label="@L["Բացել մենյուն"]"><i data-icon="menu"></i></button></div>
     </div>
-    <nav id="main-nav" aria-label="Հիմնական մենյու" class="container nav">
-        @foreach (var item in new[] { ("/catalog", "Ջրատաքացուցիչներ"), ("/parts", "Պահեստամասեր"), ("/services", "Սպասարկում"), ("/warranty", "Երաշխիք"), ("/guide", "Օգտակար նյութեր"), ("/contact", "Կապ") })
+    <nav id="main-nav" aria-label="@L["Հիմնական մենյու"]" class="container nav">
+        @foreach (var item in new[] { ("/catalog", L["Ջրատաքացուցիչներ"]), ("/parts", L["Պահեստամասեր"]), ("/services", L["Սպասարկում"]), ("/warranty", L["Երաշխիք"]), ("/guide", L["Օգտակար նյութեր"]), ("/contact", L["Կապ"]) })
         { <a href="@item.Item1" class="@(path.StartsWith(item.Item1) ? "active" : "")">@item.Item2</a> }
-        <button type="button" class="nav-service plain-button" data-request="service"><i data-icon="wrench"></i>Դիմել մասնագետին</button>
+        <button type="button" class="nav-service plain-button" data-request="service"><i data-icon="wrench"></i>@L["Դիմել մասնագետին"]</button>
     </nav>
 </header>
-@if (settings.ShowDraftBanner) { <div class="demo-bar">Նախնական տարբերակ · Տեսականին և պայմանները լրացվում են</div> }
+@if (settings.ShowDraftBanner) { <div class="demo-bar">@L["Նախնական տարբերակ · Տեսականին և պայմանները լրացվում են"]</div> }
 <main id="main">@RenderBody()</main>
-<footer class="footer"><div class="container"><div class="footer-grid"><div><partial name="_Brand" /><p>Տաք ջրի հարցերով՝ ընտրությունից մինչև սպասարկում։ Օգնում ենք ընտրել սարքը, գտնել պահեստամասը և պահպանել սարքի աշխատանքը։</p></div><div><h3>Տեսականի և ծառայություններ</h3><div class="footer-links"><a href="/catalog">Ջրատաքացուցիչներ</a><a href="/parts">Պահեստամասեր</a><a href="/services">Վերանորոգում և սպասարկում</a><a href="/warranty">Երաշխիքային պայմաններ</a></div></div><div><h3>Կապ մեզ հետ</h3><div class="footer-links">
+<footer class="footer"><div class="container"><div class="footer-grid"><div><partial name="_Brand" /><p>@L["Տաք ջրի հարցերով՝ ընտրությունից մինչև սպասարկում։ Օգնում ենք ընտրել սարքը, գտնել պահեստամասը և պահպանել սարքի աշխատանքը։"]</p></div><div><h3>@L["Տեսականի և ծառայություններ"]</h3><div class="footer-links"><a href="/catalog">@L["Ջրատաքացուցիչներ"]</a><a href="/parts">@L["Պահեստամասեր"]</a><a href="/services">@L["Վերանորոգում և սպասարկում"]</a><a href="/warranty">@L["Երաշխիքային պայմաններ"]</a></div></div><div><h3>@L["Կապ մեզ հետ"]</h3><div class="footer-links">
     @if (settings.Phone.Length > 0) { <a href="tel:@System.Text.RegularExpressions.Regex.Replace(settings.Phone, "[^+0-9]", "")">@settings.Phone</a> }
     @if (settings.Email.Length > 0) { <a href="mailto:@settings.Email">@settings.Email</a> }
     @if (settings.Address.Length > 0) { <span>@settings.Address</span> }
-    <button type="button" class="plain-button text-left" data-request="question">Գրել հարց կամ հաղորդագրություն</button><button type="button" class="plain-button text-left" data-request="callback">Խնդրել հետադարձ զանգ</button>
+    <button type="button" class="plain-button text-left" data-request="question">@L["Գրել հարց կամ հաղորդագրություն"]</button><button type="button" class="plain-button text-left" data-request="callback">@L["Խնդրել հետադարձ զանգ"]</button>
     @if (settings.Hours.Length > 0) { <span>@settings.Hours</span> }
-</div></div></div><div class="footer-bottom"><span>© @DateTime.UtcNow.Year Ջերմիք</span><div class="actions"><a href="/privacy">Գաղտնիություն</a><a href="/admin">Կառավարում</a></div></div></div></footer>
-<button type="button" class="floating-help" data-request="question"><i data-icon="message"></i><span>Հարց ունե՞ք</span></button>
+</div></div></div><div class="footer-bottom"><span>© @DateTime.UtcNow.Year @L["Ջերմիք"]</span><div class="actions"><a href="/privacy">@L["Գաղտնիություն"]</a><a href="/admin">@L["Կառավարում"]</a></div></div></div></footer>
+<button type="button" class="floating-help" data-request="question"><i data-icon="message"></i><span>@L["Հարց ունե՞ք"]</span></button>
 <div class="mobile-dock">
-    @if (settings.Phone.Length > 0) { <a class="btn btn-outline" href="tel:@System.Text.RegularExpressions.Regex.Replace(settings.Phone, "[^+0-9]", "")"><i data-icon="phone"></i>Զանգել</a> }
-    else { <button type="button" class="btn btn-outline" data-request="callback"><i data-icon="phone"></i>Զանգի հայտ</button> }
-    <button type="button" class="btn" data-request="service"><i data-icon="wrench"></i>Սպասարկում</button>
+    @if (settings.Phone.Length > 0) { <a class="btn btn-outline" href="tel:@System.Text.RegularExpressions.Regex.Replace(settings.Phone, "[^+0-9]", "")"><i data-icon="phone"></i>@L["Զանգել"]</a> }
+    else { <button type="button" class="btn btn-outline" data-request="callback"><i data-icon="phone"></i>@L["Զանգի հայտ"]</button> }
+    <button type="button" class="btn" data-request="service"><i data-icon="wrench"></i>@L["Սպասարկում"]</button>
 </div>
-<div class="compare-tray" id="compare-tray" hidden><span id="compare-count"></span><button type="button" class="btn" data-action="compare-open">Համեմատել</button><button type="button" class="plain-button clear-text" data-action="compare-clear">Մաքրել</button></div>
-<dialog id="site-dialog" aria-labelledby="dialog-title"><div class="modal-body"><button type="button" class="dialog-close icon-btn" aria-label="Փակել պատուհանը" data-action="dialog-close">×</button><h2 id="dialog-title"></h2><p id="dialog-description" class="dialog-description"></p><div id="dialog-content"></div></div></dialog>
+<div class="compare-tray" id="compare-tray" hidden><span id="compare-count"></span><button type="button" class="btn" data-action="compare-open">@L["Համեմատել"]</button><button type="button" class="plain-button clear-text" data-action="compare-clear">@L["Մաքրել"]</button></div>
+<dialog id="site-dialog" aria-labelledby="dialog-title"><div class="modal-body"><button type="button" class="dialog-close icon-btn" aria-label="@L["Փակել պատուհանը"]" data-action="dialog-close">×</button><h2 id="dialog-title"></h2><p id="dialog-description" class="dialog-description"></p><div id="dialog-content"></div></div></dialog>
 <div class="toast" id="site-toast" role="status" hidden></div>
 <template id="request-form-template"><partial name="_RequestForm" model="@(new RequestSpec("question"))" /></template>
 <script type="application/json" id="site-settings">@Html.Raw(SiteJson.Serialize(settings))</script>
+<script type="application/json" id="site-translations">@Html.Raw(SiteJson.Serialize(L.ClientTexts))</script>
 <script src="/js/site.js" asp-append-version="true" defer></script>
 @await RenderSectionAsync("Scripts", required: false)
 </body>

@@ -2,6 +2,8 @@
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
     <Nullable>enable</Nullable>
+    <!-- Use the supported Razor compiler for these inline templates on SDK 10.0.401. -->
+    <UseRazorSourceGenerator>false</UseRazorSourceGenerator>
     <ImplicitUsings>enable</ImplicitUsings>
     <UserSecretsId>jermiq-local-development</UserSecretsId>
   </PropertyGroup>

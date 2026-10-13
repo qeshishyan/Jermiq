@@ -5,7 +5,7 @@ using Microsoft.AspNetCore.Mvc.RazorPages;
 
 namespace Jermiq.Web.Pages.Products;
 
-public sealed class DetailModel(CatalogService catalog, SeoService seo) : PageModel
+public sealed class DetailModel(CatalogService catalog, SeoService seo, ContentLocalizer localizer) : PageModel
 {
     public Product Product { get; private set; } = null!;
     public SiteSettings Settings { get; private set; } = new();
@@ -17,14 +17,14 @@ public sealed class DetailModel(CatalogService catalog, SeoService seo) : PageMo
         Product = product;
         Settings = await catalog.GetSettingsAsync(ct);
         Related = (await catalog.GetProductsAsync(ct)).Where(x => x.Category == product.Category && x.Slug != slug).Take(4).ToList();
-        ViewData["Title"] = product.Title + " | Ջերմիք";
+        ViewData["Title"] = product.Title + localizer[" | Ջերմիք"];
         ViewData["Description"] = product.Description;
         ViewData["Canonical"] = "/products/" + slug;
         ViewData["Image"] = product.Image;
         ViewData["NoIndex"] = product.Demo;
         if (!product.Demo) ViewData["StructuredData"] = seo.Product(product);
-        ViewData["BreadcrumbData"] = seo.Breadcrumbs(("Գլխավոր", "/"),
-            (product.Category == "heater" ? "Ջրատաքացուցիչներ" : "Պահեստամասեր", product.Category == "heater" ? "/catalog" : "/parts"),
+        ViewData["BreadcrumbData"] = seo.Breadcrumbs((localizer["Գլխավոր"], "/"),
+            (product.Category == "heater" ? localizer["Ջրատաքացուցիչներ"] : localizer["Պահեստամասեր"], product.Category == "heater" ? "/catalog" : "/parts"),
             (product.Title, "/products/" + slug));
         return Page();
     }

@@ -14,28 +14,43 @@ public static class SiteJson
         ?? throw new InvalidDataException("Invalid stored JSON.");
 }
 
-public sealed class StaticContent(IWebHostEnvironment environment)
+public sealed class StaticContent(ContentLocalizer localizer)
 {
-    public List<ServiceInfo> Services { get; } = Read<List<ServiceInfo>>(environment, "services");
-    public List<ArticleInfo> Articles { get; } = Read<List<ArticleInfo>>(environment, "articles");
+    public List<ServiceInfo> Services => localizer.Content.Services.Select(x => new ServiceInfo(x.Id, localizer[x.Title], localizer[x.Desc])).ToList();
+    public List<ArticleInfo> Articles => localizer.Content.Articles.Select(x => new ArticleInfo(x.Slug, localizer[x.Title], localizer[x.Intro], x.Sections.Select(s => s.Select(v => localizer[v]).ToArray()).ToList())).ToList();
     public static T Read<T>(IWebHostEnvironment environment, string name) =>
         SiteJson.Deserialize<T>(File.ReadAllText(Path.Combine(environment.ContentRootPath, "SeedData", name + ".json")));
 }
 
-public sealed class CatalogService(AppDbContext db)
+public sealed class CatalogService(AppDbContext db, ContentLocalizer localizer)
 {
-    public async Task<List<Product>> GetProductsAsync(CancellationToken ct = default) =>
+    public async Task<List<Product>> GetProductsAsync(CancellationToken ct = default, bool localized = true) =>
         (await db.Products.AsNoTracking().OrderBy(x => x.UpdatedAt).ThenBy(x => x.Slug).ToListAsync(ct))
-        .Select(x => SiteJson.Deserialize<Product>(x.Data)).ToList();
-
+        .Select(x => Localize(SiteJson.Deserialize<Product>(x.Data), localized)).ToList();
     public async Task<Product?> GetProductAsync(string slug, CancellationToken ct = default)
     {
         var row = await db.Products.AsNoTracking().SingleOrDefaultAsync(x => x.Slug == slug, ct);
-        return row is null ? null : SiteJson.Deserialize<Product>(row.Data);
+        return row is null ? null : Localize(SiteJson.Deserialize<Product>(row.Data), true);
     }
-
-    public async Task<SiteSettings> GetSettingsAsync(CancellationToken ct = default) =>
-        SiteJson.Deserialize<SiteSettings>((await db.Settings.AsNoTracking().SingleAsync(x => x.Key == "site", ct)).Value);
+    private Product Localize(Product p, bool localized)
+    {
+        if (!localized) return p;
+        p.Title = localizer[p.Title]; p.Description = localizer[p.Description]; p.Availability = localizer[p.Availability];
+        if (p.Brand == "Արտադրողը՝ լրացման փուլում") p.Brand = localizer[p.Brand];
+        if (p.Model is "Մոդելը՝ լրացման փուլում" or "Համատեղելիությունը ճշտվում է") p.Model = localizer[p.Model];
+        // Manufacturer identities, model codes and technical specifications stay verbatim.
+        return p;
+    }
+    public async Task<SiteSettings> GetSettingsAsync(CancellationToken ct = default, bool localized = true)
+    {
+        var s = SiteJson.Deserialize<SiteSettings>((await db.Settings.AsNoTracking().SingleAsync(x => x.Key == "site", ct)).Value);
+        if (localized)
+        {
+            s.Address = localizer[s.Address]; s.Hours = localizer[s.Hours]; s.Warranty = localizer[s.Warranty]; s.Delivery = localizer[s.Delivery];
+            s.ServicePrices = s.ServicePrices.ToDictionary(x => x.Key, x => localizer[x.Value]);
+        }
+        return s;
+    }
 }
 
 public static class DatabaseInitializer

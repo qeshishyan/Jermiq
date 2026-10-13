@@ -7,8 +7,10 @@ public sealed class SeoService
 {
     public string BaseUrl { get; }
     public bool IndexingEnabled { get; }
-    public SeoService(IConfiguration config, IWebHostEnvironment environment)
+    private readonly ContentLocalizer localizer;
+    public SeoService(IConfiguration config, IWebHostEnvironment environment, ContentLocalizer localizer)
     {
+        this.localizer = localizer;
         BaseUrl = (config["Seo:BaseUrl"] ?? "http://localhost:5080").TrimEnd('/');
         if (!Uri.TryCreate(BaseUrl, UriKind.Absolute, out var uri) || uri.Scheme is not ("https" or "http") ||
             !string.IsNullOrEmpty(uri.Query) || !string.IsNullOrEmpty(uri.Fragment) || uri.AbsolutePath != "/")
@@ -16,11 +18,12 @@ public sealed class SeoService
         IndexingEnabled = config.GetValue<bool>("Seo:IndexingEnabled") && !environment.IsDevelopment();
     }
     public string Url(string path) => BaseUrl + (path.StartsWith('/') ? path : "/" + path);
+    public string PageUrl(string path) => Url(localizer.Language == "hy" ? path : localizer.Link(path));
     public object Organization(SiteSettings s)
     {
         var result = new Dictionary<string, object>
         {
-            ["@context"] = "https://schema.org", ["@type"] = "Organization", ["name"] = "Ջերմիք",
+            ["@context"] = "https://schema.org", ["@type"] = "Organization", ["name"] = localizer["Ջերմիք"],
             ["url"] = BaseUrl, ["logo"] = Url("/logo.svg")
         };
         if (!string.IsNullOrWhiteSpace(s.Phone)) result["telephone"] = s.Phone;
@@ -32,28 +35,28 @@ public sealed class SeoService
     {
         ["@context"] = "https://schema.org", ["@type"] = "BreadcrumbList",
         ["itemListElement"] = items.Select((item, index) => new Dictionary<string, object>
-        { ["@type"] = "ListItem", ["position"] = index + 1, ["name"] = item.Name, ["item"] = Url(item.Path) }).ToArray()
+        { ["@type"] = "ListItem", ["position"] = index + 1, ["name"] = item.Name, ["item"] = PageUrl(item.Path) }).ToArray()
     };
     public object Product(Product p)
     {
         var data = new Dictionary<string, object>
         {
             ["@context"] = "https://schema.org", ["@type"] = "Product", ["name"] = p.Title,
-            ["description"] = p.Description, ["image"] = Url(p.Image), ["url"] = Url("/products/" + p.Slug)
+            ["description"] = p.Description, ["image"] = Url(p.Image), ["url"] = PageUrl("/products/" + p.Slug)
         };
         if (!string.IsNullOrWhiteSpace(p.Brand)) data["brand"] = new Dictionary<string, string> { ["@type"] = "Brand", ["name"] = p.Brand };
         if (!string.IsNullOrWhiteSpace(p.Model)) data["model"] = p.Model;
         if (p.Price is not null) data["offers"] = new Dictionary<string, object>
         {
-            ["@type"] = "Offer", ["price"] = p.Price.Value, ["priceCurrency"] = "AMD", ["url"] = Url("/products/" + p.Slug)
+            ["@type"] = "Offer", ["price"] = p.Price.Value, ["priceCurrency"] = "AMD", ["url"] = PageUrl("/products/" + p.Slug)
         };
         return data;
     }
     public object Article(ArticleInfo a) => new Dictionary<string, object>
     {
         ["@context"] = "https://schema.org", ["@type"] = "Article", ["headline"] = a.Title,
-        ["description"] = a.Intro, ["inLanguage"] = "hy", ["mainEntityOfPage"] = Url("/guide/" + a.Slug),
-        ["author"] = new Dictionary<string, string> { ["@type"] = "Organization", ["name"] = "Ջերմիք" }
+        ["description"] = a.Intro, ["inLanguage"] = localizer.Language, ["mainEntityOfPage"] = PageUrl("/guide/" + a.Slug),
+        ["author"] = new Dictionary<string, string> { ["@type"] = "Organization", ["name"] = localizer["Ջերմիք"] }
     };
 }
 
@@ -71,7 +74,7 @@ public static class SeoEndpoints
                 .Concat(content.Articles.Select(x => "/guide/" + x.Slug))
                 .Concat((await catalog.GetProductsAsync(ct)).Where(x => !x.Demo).Select(x => "/products/" + x.Slug));
             var xml = new XDocument(new XDeclaration("1.0", "utf-8", null),
-                new XElement(ns + "urlset", paths.Select(path => new XElement(ns + "url", new XElement(ns + "loc", seo.Url(path)),
+                new XElement(ns + "urlset", paths.SelectMany(path => new[] { path, path + "?lang=en", path + "?lang=ru" }).Select(path => new XElement(ns + "url", new XElement(ns + "loc", seo.Url(path)),
                     new XElement(ns + "changefreq", "monthly"), new XElement(ns + "priority", path == "" ? "1.0" : "0.7")))));
             return Results.Text(xml.ToString(), "application/xml; charset=utf-8");
         });

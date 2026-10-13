@@ -1,0 +1,6 @@
+<nav class="language-switch" aria-label="Language">
+@foreach (var language in ContentLocalizer.Languages)
+{
+    <a href="@L.Link(Context.Request.Path + Context.Request.QueryString, language)" lang="@language" hreflang="@language" aria-current="@(L.Language == language ? "true" : "false")">@(language == "hy" ? "ՀԱՅ" : language == "en" ? "EN" : "РУ")</a>
+}
+</nav>

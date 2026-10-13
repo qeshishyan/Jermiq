@@ -25,9 +25,9 @@ public static class ApiEndpoints
             return Results.Json(new
             {
                 leads = await db.Leads.AsNoTracking().OrderByDescending(x => x.CreatedAt).Take(100).ToListAsync(ct),
-                products = await catalog.GetProductsAsync(ct), settings = await catalog.GetSettingsAsync(ct)
+                products = await catalog.GetProductsAsync(ct, false), settings = await catalog.GetSettingsAsync(ct, false), isAdmin = ctx.User.IsInRole("Admin")
             });
-        }).RequireAuthorization("Admin");
+        }).RequireAuthorization("BackOffice");
         app.MapPost("/api/admin", MutateAdminAsync).RequireAuthorization("Admin");
         app.MapPost("/api/product-image", async (HttpContext ctx, IAntiforgery anti, FileStorage storage, CancellationToken ct) =>
         {
@@ -61,7 +61,7 @@ public static class ApiEndpoints
             if (!File.Exists(path)) return Error("Ֆայլը չի գտնվել։", 404);
             ctx.Response.Headers.CacheControl = "private, no-store";
             return Results.File(path, FileStorage.ContentType(path), $"attachment-{lead.Id}{Path.GetExtension(path)}");
-        }).RequireAuthorization("Admin");
+        }).RequireAuthorization("BackOffice");
     }
 
     private static async Task<IResult> CreateLeadAsync(HttpContext ctx, IAntiforgery anti, AppDbContext db,
@@ -139,7 +139,7 @@ public static class ApiEndpoints
         {
             case "product":
                 var p = body.Product;
-                if (p is null || !Valid(p) || p.Specs is null || p.Specs.Count > 50 ||
+                if (p is null || new[] { p.Title, p.Brand, p.Model, p.Description, p.Availability }.Any(x => x is null) || !Valid(p) || p.Specs is null || p.Specs.Count > 50 ||
                     p.Specs.Any(x => string.IsNullOrWhiteSpace(x.Key) || x.Key.Length > 100 || x.Value is null || x.Value.Length > 500) ||
                     !Regex.IsMatch(p.Image ?? "", "^/(images/(hero|parts)\\.webp|api/product-image\\?id=[a-f0-9-]{36})$"))
                     return Error("Ստուգեք ապրանքի լրացված տվյալները։");
@@ -150,7 +150,7 @@ public static class ApiEndpoints
                 break;
             case "settings":
                 var settings = body.Settings;
-                if (settings is null || !Valid(settings) || settings.ServicePrices is null || settings.ServicePrices.Count > 20 ||
+                if (settings is null || new[] { settings.Phone, settings.Email, settings.Address, settings.Hours, settings.Warranty, settings.Delivery }.Any(x => x is null) || !Valid(settings) || settings.ServicePrices is null || settings.ServicePrices.Count > 20 ||
                     settings.ServicePrices.Any(x => x.Key.Length > 50 || x.Value is null || x.Value.Length > 200) ||
                     (!string.IsNullOrEmpty(settings.Email) && !new EmailAddressAttribute().IsValid(settings.Email)))
                     return Error("Ստուգեք կոնտակտներն ու պայմանները։");
@@ -164,11 +164,17 @@ public static class ApiEndpoints
                 if (lead is null) return Error("Հայտը չի գտնվել։", 404);
                 if (body.Action == "status")
                 {
-                    if (body.Status is not ("new" or "contacted" or "completed")) return Error("Հայտի կարգավիճակը սխալ է։");
-                    lead.Status = body.Status;
+                    if (!BackOfficeEndpoints.Statuses.Contains(body.Status ?? "")) return Error("Հայտի կարգավիճակը սխալ է։");
+                    lead.Status = body.Status!;
+                    var officeRow = await db.Settings.SingleOrDefaultAsync(x => x.Key == "office:" + lead.Id, ct);
+                    var office = BackOfficeEndpoints.Office(lead, officeRow);
+                    BackOfficeEndpoints.Record(office, ctx, "Փոխվել է կարգավիճակը · " + body.Status);
+                    BackOfficeEndpoints.StoreOffice(db, lead.Id, officeRow, office);
                 }
                 else
                 {
+                    var metadata = await db.Settings.SingleOrDefaultAsync(x => x.Key == "office:" + lead.Id, ct);
+                    if (metadata is not null) db.Settings.Remove(metadata);
                     db.Leads.Remove(lead);
                     await db.SaveChangesAsync(ct);
                     storage.Delete(lead.Attachment);

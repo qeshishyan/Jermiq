@@ -1,0 +1,17 @@
+@inject Microsoft.AspNetCore.Antiforgery.IAntiforgery Antiforgery
+<!DOCTYPE html>
+<html lang="@L.Language">
+<head>
+<meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>@L["Office workspace"] | Jermiq</title><meta name="robots" content="noindex, nofollow" />
+<meta name="csrf-token" content="@Antiforgery.GetAndStoreTokens(Context).RequestToken" />
+<link rel="icon" href="/favicon.svg" /><link rel="stylesheet" href="/css/site.css" asp-append-version="true" /><link rel="stylesheet" href="/css/app.css" asp-append-version="true" /><link rel="stylesheet" href="/css/office.css" asp-append-version="true" />
+</head>
+<body class="office-body"><a href="#main" class="skip-link">@L["Անցնել բովանդակությանը"]</a>
+@RenderBody()
+<dialog id="site-dialog" aria-labelledby="dialog-title"><div class="modal-body"><button type="button" class="dialog-close icon-btn" aria-label="@L["Փակել պատուհանը"]" data-action="dialog-close">×</button><h2 id="dialog-title"></h2><p id="dialog-description" class="dialog-description"></p><div id="dialog-content"></div></div></dialog>
+<div class="toast" id="site-toast" role="status" hidden></div>
+<script type="application/json" id="site-translations">@Html.Raw(SiteJson.Serialize(L.ClientTexts))</script>
+<script src="/js/site.js" asp-append-version="true" defer></script>
+@await RenderSectionAsync("Scripts", required: false)
+</body></html>

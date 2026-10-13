@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authentication;
 using System.Net;
 using System.Threading.RateLimiting;
 using Jermiq.Web.Data;
@@ -33,13 +34,31 @@ builder.Services.ConfigureApplicationCookie(o =>
     o.AccessDeniedPath = "/admin/login";
     o.ExpireTimeSpan = TimeSpan.FromHours(8);
     o.SlidingExpiration = true;
+    o.Events.OnValidatePrincipal = async context =>
+    {
+        await SecurityStampValidator.ValidatePrincipalAsync(context);
+        if (context.Principal?.Identity?.IsAuthenticated != true) return;
+        var users = context.HttpContext.RequestServices.GetRequiredService<UserManager<IdentityUser>>();
+        var user = await users.GetUserAsync(context.Principal);
+        var stampClaim = context.HttpContext.RequestServices.GetRequiredService<Microsoft.Extensions.Options.IOptions<IdentityOptions>>().Value.ClaimsIdentity.SecurityStampClaimType;
+        if (user is null || user.LockoutEnd > DateTimeOffset.UtcNow ||
+            await users.GetSecurityStampAsync(user) != context.Principal.FindFirst(stampClaim)?.Value)
+        {
+            context.RejectPrincipal();
+            await context.HttpContext.SignOutAsync(IdentityConstants.ApplicationScheme);
+        }
+    };
     o.Events.OnRedirectToLogin = ctx => ApiRedirect(ctx, 401);
     o.Events.OnRedirectToAccessDenied = ctx => ApiRedirect(ctx, 403);
 });
-builder.Services.AddAuthorization(o => o.AddPolicy("Admin", policy => policy.RequireAuthenticatedUser().RequireRole("Admin")));
+builder.Services.AddAuthorization(o =>
+{
+    o.AddPolicy("Admin", policy => policy.RequireAuthenticatedUser().RequireRole("Admin"));
+    o.AddPolicy("BackOffice", policy => policy.RequireAuthenticatedUser().RequireRole("Admin", "Office"));
+});
 builder.Services.AddRazorPages(o =>
 {
-    o.Conventions.AuthorizeFolder("/Admin", "Admin");
+    o.Conventions.AuthorizeFolder("/Admin", "BackOffice");
     o.Conventions.AllowAnonymousToPage("/Admin/Login");
 });
 builder.Services.AddAntiforgery(o => o.HeaderName = "X-CSRF-TOKEN");
@@ -53,9 +72,11 @@ builder.Services.Configure<ForwardedHeadersOptions>(o =>
         o.KnownProxies.Add(IPAddress.Parse(proxy));
 });
 builder.Services.AddScoped<CatalogService>();
-builder.Services.AddSingleton<StaticContent>();
+builder.Services.AddSingleton<CmsDefaults>();
+builder.Services.AddScoped<ContentLocalizer>();
+builder.Services.AddScoped<StaticContent>();
 builder.Services.AddSingleton<FileStorage>();
-builder.Services.AddSingleton<SeoService>();
+builder.Services.AddScoped<SeoService>();
 builder.Services.AddRateLimiter(o =>
 {
     o.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(ctx =>
@@ -74,7 +95,7 @@ builder.Services.AddRateLimiter(o =>
     o.OnRejected = async (context, ct) =>
     {
         context.HttpContext.Response.Headers.RetryAfter = "900";
-        await context.HttpContext.Response.WriteAsJsonAsync(new { error = "Հարցումները շատ են։ Փորձեք կրկին ավելի ուշ։" }, ct);
+        await context.HttpContext.Response.WriteAsJsonAsync(new { error = context.HttpContext.RequestServices.GetRequiredService<ContentLocalizer>()["Հարցումները շատ են։ Փորձեք կրկին ավելի ուշ։"] }, ct);
     };
 });
 
@@ -131,14 +152,24 @@ app.Use(async (ctx, next) =>
         ctx.Response.Clear();
         ctx.Response.StatusCode = e switch { AntiforgeryValidationException => 400, BadHttpRequestException b => b.StatusCode, _ => 503 };
         if (ctx.Request.Path.StartsWithSegments("/api"))
-            await ctx.Response.WriteAsJsonAsync(new { error = "Չհաջողվեց մշակել հարցումը։ Թարմացրեք էջը և փորձեք կրկին։" });
-        else await ctx.Response.WriteAsync("Հարցումը ժամանակավորապես չի մշակվել։ Փորձեք կրկին։");
+            await ctx.Response.WriteAsJsonAsync(new { error = ctx.RequestServices.GetRequiredService<ContentLocalizer>()["Չհաջողվեց մշակել հարցումը։ Թարմացրեք էջը և փորձեք կրկին։"] });
+        else await ctx.Response.WriteAsync(ctx.RequestServices.GetRequiredService<ContentLocalizer>()["Հարցումը ժամանակավորապես չի մշակվել։ Փորձեք կրկին։"]);
     }
 });
 app.UseStatusCodePagesWithReExecute("/not-found");
 app.UseStaticFiles(new StaticFileOptions
 {
     OnPrepareResponse = context => context.Context.Response.Headers.CacheControl = "public, max-age=86400"
+});
+app.Use(async (ctx, next) =>
+{
+    if (!ctx.Request.Path.StartsWithSegments("/css") && !ctx.Request.Path.StartsWithSegments("/js") && !ctx.Request.Path.StartsWithSegments("/images"))
+    {
+        await ctx.RequestServices.GetRequiredService<ContentLocalizer>().LoadAsync(ctx, ctx.RequestServices.GetRequiredService<AppDbContext>());
+        ctx.Response.Headers.ContentLanguage = ctx.RequestServices.GetRequiredService<ContentLocalizer>().Language;
+        ctx.Response.Headers.Vary = "Cookie";
+    }
+    await next(ctx);
 });
 app.UseRouting();
 app.UseRateLimiter();
@@ -147,9 +178,10 @@ app.UseAuthorization();
 app.UseAntiforgery();
 app.MapRazorPages();
 app.MapJermiqApi();
+app.MapBackOfficeApi();
 app.MapSeoEndpoints();
 app.MapGet("/health", () => Results.Json(new { status = "ok" }));
-app.MapFallback("/api/{**path}", () => Results.Json(new { error = "API հասցեն չի գտնվել։" }, statusCode: 404));
+app.MapFallback("/api/{**path}", () => new LocalizedError("API հասցեն չի գտնվել։", 404));
 app.Run();
 
 static Task ApiRedirect(Microsoft.AspNetCore.Authentication.RedirectContext<Microsoft.AspNetCore.Authentication.Cookies.CookieAuthenticationOptions> ctx, int status)
@@ -157,7 +189,7 @@ static Task ApiRedirect(Microsoft.AspNetCore.Authentication.RedirectContext<Micr
     if (ctx.Request.Path.StartsWithSegments("/api"))
     {
         ctx.Response.StatusCode = status;
-        return ctx.Response.WriteAsJsonAsync(new { error = "Մուտքը սահմանափակված է։ Մուտք գործեք կառավարման բաժին։" });
+        return ctx.Response.WriteAsJsonAsync(new { error = ctx.HttpContext.RequestServices.GetRequiredService<ContentLocalizer>()["Մուտքը սահմանափակված է։ Մուտք գործեք կառավարման բաժին։"] });
     }
     ctx.Response.Redirect(ctx.RedirectUri);
     return Task.CompletedTask;
