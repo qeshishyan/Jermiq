@@ -33,7 +33,21 @@
   root.addEventListener('input', event => { const form = event.target.closest('form'); if (form && form.id !== 'lead-search-form') dirty.add(form.id); });
   root.addEventListener('change', event => { const form = event.target.closest('form'); if (form && form.id !== 'lead-search-form') dirty.add(form.id); });
   window.addEventListener('beforeunload', event => { if (dirty.size || Object.keys(translationDraft).length) { event.preventDefault(); event.returnValue = ''; } });
+  async function refreshArrivals() {
+    if (busy) return false;
+    setBusy(true);
+    try { await loadOffice(); return true; }
+    finally { setBusy(false); }
+  }
+  async function openArrivals() {
+    if (busy) return false;
+    $('#lead-search').value = ''; $('#lead-filter').value = 'all'; $('#lead-kind-filter').value = 'all'; leadPage = 1;
+    selectTab(tabs[0]);
+    try { return await refreshArrivals(); }
+    catch (err) { error(err.message); return false; }
+  }
   async function load() {
+    await window.JermiqArrivals?.start({ refresh: refreshArrivals, open: openArrivals });
     const data = await api('/api/admin', { cache: 'no-store' });
     products = data.products; settings = data.settings;
     await loadOffice();

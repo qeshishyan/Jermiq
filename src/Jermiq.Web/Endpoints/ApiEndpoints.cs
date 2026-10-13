@@ -113,6 +113,7 @@ public static class ApiEndpoints
                 CreatedAt = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(), PayloadHash = hash
             };
             db.Leads.Add(lead);
+            db.LeadArrivals.Add(new LeadArrival { LeadId = id });
             try { await db.SaveChangesAsync(ct); committed = true; }
             catch (DbUpdateException)
             {

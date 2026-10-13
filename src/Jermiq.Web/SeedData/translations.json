@@ -2668,5 +2668,55 @@
     "hy": "Մուտքը սահմանափակված է։ Մուտք գործեք կառավարման բաժին։",
     "en": "Access restricted. Sign in to administration.",
     "ru": "Доступ ограничен. Войдите в управление."
+  },
+  "Enable sound": {
+    "hy": "Միացնել ձայնը",
+    "en": "Enable sound",
+    "ru": "Включить звук"
+  },
+  "Activate sound": {
+    "hy": "Ակտիվացնել ձայնը",
+    "en": "Activate sound",
+    "ru": "Активировать звук"
+  },
+  "Mute sound": {
+    "hy": "Անջատել ձայնը",
+    "en": "Mute sound",
+    "ru": "Выключить звук"
+  },
+  "New requests": {
+    "hy": "Նոր հայտեր",
+    "en": "New requests",
+    "ru": "Новые заявки"
+  },
+  "View new requests": {
+    "hy": "Դիտել նոր հայտերը",
+    "en": "View new requests",
+    "ru": "Посмотреть новые заявки"
+  },
+  "Live updates connected": {
+    "hy": "Ավտոմատ թարմացումները միացված են",
+    "en": "Live updates connected",
+    "ru": "Автообновление подключено"
+  },
+  "Connection interrupted. Retrying automatically…": {
+    "hy": "Կապն ընդհատվել է։ Կրկին միանում ենք ավտոմատ…",
+    "en": "Connection interrupted. Retrying automatically…",
+    "ru": "Соединение прервано. Автоматическое переподключение…"
+  },
+  "Sign in again to receive new requests.": {
+    "hy": "Նոր հայտերը ստանալու համար կրկին մուտք գործեք։",
+    "en": "Sign in again to receive new requests.",
+    "ru": "Войдите снова для получения новых заявок."
+  },
+  "Sound is unavailable in this browser.": {
+    "hy": "Այս բրաուզերում ձայնային ազդանշանը հասանելի չէ։",
+    "en": "Sound is unavailable in this browser.",
+    "ru": "Звуковой сигнал недоступен в этом браузере."
+  },
+  "Invalid arrival cursor.": {
+    "hy": "Թարմացումների նույնացուցիչը սխալ է։",
+    "en": "Invalid arrival cursor.",
+    "ru": "Некорректный курсор обновлений."
   }
 }

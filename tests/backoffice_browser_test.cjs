@@ -11,10 +11,29 @@ const output=path.join(__dirname,'../test-results');
  const browser=await chromium.launch({headless:true,executablePath:await packaged.executablePath(),args:packaged.args});
  const context=await browser.newContext({viewport:{width:1440,height:1050}});
  await context.addCookies(input.cookie.split('; ').map(x=>{const at=x.indexOf('=');return {name:x.slice(0,at),value:x.slice(at+1),url:input.baseUrl};}));
+ await context.addInitScript(() => {
+   const Audio = window.AudioContext;
+   window.arrivalTones = 0; window.arrivalAudio = [];
+   window.AudioContext = class extends Audio {
+     constructor(...args) { super(...args); window.arrivalAudio.push(this); }
+     createOscillator() { const oscillator = super.createOscillator(), start = oscillator.start.bind(oscillator); oscillator.start = (...args) => { window.arrivalTones++; return start(...args); }; return oscillator; }
+   };
+ });
  const page=await context.newPage(),errors=[];page.on('pageerror',e=>errors.push(e.message));
  fs.mkdirSync(output,{recursive:true});
  await page.goto(input.baseUrl+'/admin?lang=hy');await page.locator('.office-stat').first().waitFor();
+ await page.locator('#arrival-sound').click();
+ await page.waitForFunction(() => document.querySelector('#arrival-sound').getAttribute('aria-pressed') === 'true' && window.arrivalTones === 2);
  await page.locator('#lead-new').click();await page.locator('#lead-form').waitFor({state:'visible'});
+ await page.locator('#lead-form [name="name"]').fill('Unsaved browser draft');
+ const csrf = await page.locator('meta[name="csrf-token"]').getAttribute('content');
+ const response = await page.request.post(input.baseUrl + '/api/leads', {headers:{'X-CSRF-TOKEN':csrf},multipart:{requestId:require('crypto').randomUUID(),kind:'order',name:'Browser live order',phone:'+374 99 123456',consent:'true'}});
+ if(response.status() !== 201) throw Error('Browser order submission failed');
+ await page.waitForFunction(() => document.title.startsWith('(1)') && window.arrivalTones === 4);
+ if(await page.locator('#lead-form [name="name"]').inputValue() !== 'Unsaved browser draft') throw Error('Auto refresh overwrote draft');
+ if(!await page.evaluate(() => window.arrivalAudio[0].state === 'running')) throw Error('Audio context did not activate');
+ await page.locator('#arrival-open').click();await page.locator('#arrival-banner').waitFor({state:'hidden'});
+ await page.locator('#leads-list').getByText('Browser live order',{exact:true}).waitFor();
  await page.screenshot({path:path.join(output,'office-desktop.png'),fullPage:false});
  const desktopOverflow=await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth+1);
  if(desktopOverflow)throw Error('Desktop workspace overflows');
@@ -31,6 +50,6 @@ const output=path.join(__dirname,'../test-results');
  await page.setViewportSize({width:1440,height:1050});await page.goto(input.baseUrl+'/?lang=en');
  await page.screenshot({path:path.join(output,'site-english-desktop.png'),fullPage:false});
  if(errors.length)throw Error(errors.join('\n'));
- console.log(JSON.stringify({browserPassed:5,screenshots:5,consoleErrors:0,desktopOverflow:false,mobileOverflow:false}));
+ console.log(JSON.stringify({browserPassed:9,screenshots:5,consoleErrors:0,desktopOverflow:false,mobileOverflow:false}));
  await browser.close();
 })().catch(e=>{console.error(e);process.exit(1);});

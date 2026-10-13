@@ -79,6 +79,22 @@ namespace Jermiq.Web.Data.Migrations
                     b.ToTable("Leads");
                 });
 
+            modelBuilder.Entity("Jermiq.Web.Models.LeadArrival", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("LeadId")
+                        .IsRequired()
+                        .HasMaxLength(36)
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("LeadArrivals");
+                });
+
             modelBuilder.Entity("Jermiq.Web.Models.ProductRecord", b =>
                 {
                     b.Property<string>("Slug")

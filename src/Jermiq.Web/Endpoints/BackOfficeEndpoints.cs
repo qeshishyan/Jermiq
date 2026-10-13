@@ -18,6 +18,14 @@ public static class BackOfficeEndpoints
     private static readonly string[] Priorities = ["low", "normal", "high", "urgent"];
     public static void MapBackOfficeApi(this WebApplication app)
     {
+        app.MapGet("/api/admin/arrivals", async (long? after, AppDbContext db, CancellationToken ct) =>
+        {
+            if (after is null)
+                return Results.Json(new { cursor = await db.LeadArrivals.MaxAsync(x => (long?)x.Id, ct) ?? 0, ids = Array.Empty<string>(), more = false });
+            if (after < 0) return Error("Invalid arrival cursor.");
+            var events = await db.LeadArrivals.AsNoTracking().Where(x => x.Id > after).OrderBy(x => x.Id).Take(200).ToListAsync(ct);
+            return Results.Json(new { cursor = events.LastOrDefault()?.Id ?? after.Value, ids = events.Select(x => x.LeadId), more = events.Count == 200 });
+        }).RequireAuthorization("BackOffice");
         app.MapGet("/api/admin/leads", async (HttpContext ctx, AppDbContext db, UserManager<IdentityUser> users, CancellationToken ct) =>
         {
             var query = Filter(db, ctx);
@@ -148,6 +156,7 @@ public static class BackOfficeEndpoints
             ["Manufacturer"] = office.Brand, ["Customer message"] = lead.Message, ["Order / technical details"] = office.Selection,
             ["Channel"] = office.Source, ["Due date"] = office.DueAt?.ToString("O") ?? ""
         };
+        if (created) db.LeadArrivals.Add(new LeadArrival { LeadId = id });
         var action = created ? "Հայտը ստեղծվել է օֆիսից" : "Request edited";
         lead!.Kind = edit.Kind.Trim(); lead.Name = edit.Name.Trim(); lead.Phone = edit.Phone.Trim(); lead.Email = edit.Email?.Trim() ?? "";
         lead.Message = edit.Message.Trim(); lead.Status = edit.Status;

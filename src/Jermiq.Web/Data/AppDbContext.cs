@@ -10,6 +10,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
 {
     public DbSet<ProductRecord> Products => Set<ProductRecord>();
     public DbSet<SettingRecord> Settings => Set<SettingRecord>();
+    public DbSet<LeadArrival> LeadArrivals => Set<LeadArrival>();
     public DbSet<Lead> Leads => Set<Lead>();
 
     protected override void OnModelCreating(ModelBuilder builder)

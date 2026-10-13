@@ -39,3 +39,10 @@ public sealed class LeadEdit
     [StringLength(200)] public string Assignee { get; set; } = "";
     public DateTimeOffset? DueAt { get; set; }
 }
+
+// Durable arrival sequence avoids timestamp races and duplicate replay notifications.
+public sealed class LeadArrival
+{
+    public long Id { get; set; }
+    [MaxLength(36)] public string LeadId { get; set; } = "";
+}
