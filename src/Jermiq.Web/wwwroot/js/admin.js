@@ -7,18 +7,22 @@
   const labels = { service: t(t("Սպասարկում")), question: t('Question'), part: t(t("Պահեստամաս")), order: t('Order'), callback: t('Callback') };
   const statuses = { new: t(t("Նոր")), contacted: t(t("Կապ հաստատված")), in_progress: t('In progress'), waiting: t('Waiting'), completed: t(t("Ավարտված")), cancelled: t('Cancelled') };
   const priorities = { low: t('Low'), normal: t('Normal'), high: t('High'), urgent: t('Urgent') };
-  const dirty = new Set();
+  const dirty = new Set(), selectedLeads = new Map();
+  let productPage = 1, productPages = 1, productBaseline = null, dashboard = null;
   let products = [], settings = {}, selected = null, busy = false, officeData = null, currentLead = null, leadPage = 1;
   let loadCms, loadUsers;
   let cms = null, translationPage = 1, translationPages = 1, translationDraft = {}, currentContent = null, users = [], currentUser = null;
   const date = value => new Date(value).toLocaleString(document.documentElement.lang, { timeZone: 'Asia/Yerevan' });
   function error(message) { $('#admin-error').textContent = message; $('#admin-error').hidden = !message; }
   function notice(message) { $('#admin-notice').textContent = message; $('#admin-notice').hidden = !message; }
+  function syncDrafts() { $$('[data-dirty-for]').forEach(el => { el.textContent = t(dirty.has(el.dataset.dirtyFor) ? 'Unsaved changes' : 'Saved version'); el.classList.toggle('has-changes', dirty.has(el.dataset.dirtyFor)); }); }
   function setBusy(value) {
     busy = value; root.setAttribute('aria-busy', String(value));
-    $$('#lead-form,#product-form,#settings-form,#content-form,#user-form', root).forEach(form => { form.inert = value; });
-    $$('button,input[type=file]', root).forEach(el => { el.disabled = value; });
+    $$('#lead-form,#product-form,#settings-form,#content-form,#user-form,#lead-search-form,.advanced-filters', root).forEach(form => { form.inert = value; });
+    $$('button,input[type=file],input[data-select-lead],#lead-select-page,#lead-bulk-status,#product-search,#product-category-filter,#product-state-filter,#product-sort', root).forEach(el => { el.disabled = value; });
     if (!value && officeData) { $('#lead-prev').disabled = leadPage <= 1; $('#lead-next').disabled = leadPage * officeData.pageSize >= officeData.total; }
+    if (!value && isAdmin) { $('#product-prev').disabled = productPage <= 1; $('#product-next').disabled = productPage >= productPages; }
+    syncDrafts();
     if (!value && isAdmin && cms) { $('#translation-prev').disabled = translationPage <= 1; $('#translation-next').disabled = translationPage >= translationPages; }
   }
   async function run(fn) {
@@ -28,10 +32,11 @@
     catch (err) { error(err.message); }
     finally { setBusy(false); }
   }
+  root.addEventListener('click', event => { if (busy) { event.preventDefault(); event.stopImmediatePropagation(); } }, true);
   const post = (url, body) => api(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
   function discard(form) { if (!dirty.has(form)) return true; if (!confirm(t('Discard unsaved changes?'))) return false; dirty.delete(form); return true; }
-  root.addEventListener('input', event => { const form = event.target.closest('form'); if (form && form.id !== 'lead-search-form') dirty.add(form.id); });
-  root.addEventListener('change', event => { const form = event.target.closest('form'); if (form && form.id !== 'lead-search-form') dirty.add(form.id); });
+  root.addEventListener('input', event => { const form = event.target.closest('form'); if (form && form.id !== 'lead-search-form') { dirty.add(form.id); syncDrafts(); } });
+  root.addEventListener('change', event => { const form = event.target.closest('form'); if (form && form.id !== 'lead-search-form') { dirty.add(form.id); syncDrafts(); } });
   window.addEventListener('beforeunload', event => { if (dirty.size || Object.keys(translationDraft).length) { event.preventDefault(); event.returnValue = ''; } });
   async function refreshArrivals() {
     if (busy) return false;
@@ -41,8 +46,8 @@
   }
   async function openArrivals() {
     if (busy) return false;
-    $('#lead-search').value = ''; $('#lead-filter').value = 'all'; $('#lead-kind-filter').value = 'all'; leadPage = 1;
-    selectTab(tabs[0]);
+    resetLeadFilters();
+    selectTab(tabs.find(tab => tab.dataset.tab === 'leads'));
     try { return await refreshArrivals(); }
     catch (err) { error(err.message); return false; }
   }
@@ -53,20 +58,55 @@
     await loadOffice();
     if (isAdmin) {
       selected = products.find(p => p.slug === selected?.slug) || products[0] || null;
-      renderProducts(); fillSettings(); if (selected) fillProduct(selected);
+      renderProducts(); fillSettings(); if (selected) fillProduct(selected, false);
+      const activeTab = tabs.find(tab => tab.getAttribute('aria-selected') === 'true');
+      if (['translations','content'].includes(activeTab?.dataset.tab) && !cms) await loadCms();
+      if (activeTab?.dataset.tab === 'users') await loadUsers();
     }
   }
   async function mutate(body) {
     await post('/api/admin', body); notice(t('Saved'));
     const data = await api('/api/admin', { cache: 'no-store' }); products = data.products; settings = data.settings;
-    if (isAdmin) { selected = products.find(p => p.slug === selected?.slug) || products[0]; renderProducts(); fillSettings(); if (selected) fillProduct(selected); }
+    await loadDashboard();
+    if (body.action === 'product') {
+      selected = products.find(p => p.slug === body.product.slug); if (selected) fillProduct(selected, false);
+    }
+    if (body.action === 'settings') fillSettings();
+    renderProducts();
   }
-  function leadQuery() { return new URLSearchParams({ q: $('#lead-search').value, status: $('#lead-filter').value, kind: $('#lead-kind-filter').value, page: leadPage }); }
+  function resetLeadFilters() {
+    $('#lead-search').value = '';
+    ['lead-filter','lead-kind-filter','lead-priority-filter','lead-assignee-filter','lead-source-filter','lead-due-filter'].forEach(id => { $('#' + id).value = 'all'; });
+    $('#lead-sort').value = 'newest'; leadPage = 1;
+  }
+  function leadQuery() { return new URLSearchParams({ q: $('#lead-search').value, status: $('#lead-filter').value, kind: $('#lead-kind-filter').value, priority: $('#lead-priority-filter').value, assignee: $('#lead-assignee-filter').value, source: $('#lead-source-filter').value, due: $('#lead-due-filter').value, sort: $('#lead-sort').value, page: leadPage }); }
+  async function loadDashboard() {
+    dashboard = await api('/api/admin/dashboard', { cache: 'no-store' });
+    const metrics = [[t('Today'), dashboard.today, 'message'], [t('Active requests'), dashboard.active, 'wrench'], [t('Urgent'), dashboard.urgent, 'shield'], [t('Overdue'), dashboard.overdue, 'refresh']];
+    $('#dashboard-metrics').innerHTML = metrics.map(([title,count,icon]) => `<article class="overview-metric"><div><span>${escape(title)}</span><strong>${count}</strong></div><i data-icon="${icon}"></i></article>`).join('');
+    $('#dashboard-recent').innerHTML = dashboard.latest.length ? dashboard.latest.map(l => `<button type="button" class="recent-row" data-dashboard-lead="${escape(l.id)}"><span class="initial-avatar">${escape(l.name.slice(0,1))}</span><span class="recent-person"><strong>${escape(l.name)}</strong><small>${escape(labels[l.kind] || l.kind)} · ${escape(date(l.createdAt))}</small></span><span class="office-badge ${escape(l.status)}">${escape(statuses[l.status] || l.status)}</span><span>↗</span></button>`).join('') : `<p class="empty-caption">${escape(t('No requests yet'))}</p>`;
+    $('#dashboard-attention').innerHTML = [[t('Overdue'),dashboard.overdue,'overdue'],[t('Urgent'),dashboard.urgent,'urgent'],[t('Unassigned'),dashboard.unassigned,'unassigned']].map(([title,count,filter]) => `<button type="button" class="attention-row" data-attention="${filter}"><span>${escape(title)}</span><strong>${count}</strong><span>→</span></button>`).join('');
+    if (isAdmin && dashboard.catalog) {
+      const c = dashboard.catalog;
+      $('#dashboard-catalog').innerHTML = [[t('All products'),c.total,'all'],[t('Missing price'),c.withoutPrice,'no-price'],[t('Demonstration examples'),c.demo,'demo'],[t('Missing description'),c.withoutDescription,'no-description']].map(([label,count,filter]) => `<button class="catalog-health-item" type="button" data-catalog-filter="${filter}"><strong>${count}</strong><span>${escape(label)}</span><span>→</span></button>`).join('');
+    }
+    $('#last-synced').textContent = `${t('Updated')} ${new Date().toLocaleTimeString(document.documentElement.lang, { hour:'2-digit',minute:'2-digit',timeZone:'Asia/Yerevan' })}`;
+    icons($('#panel-dashboard'));
+  }
+  function renderSelection() {
+    $('#lead-bulk').hidden = selectedLeads.size === 0;
+    $('#lead-selected-count').textContent = `${selectedLeads.size} ${t('Selected')}`;
+    const entries = officeData?.leads || [];
+    $('#lead-select-page').checked = entries.length > 0 && entries.every(x => selectedLeads.has(x.lead.id));
+    $('#lead-select-page').indeterminate = entries.some(x => selectedLeads.has(x.lead.id)) && !$('#lead-select-page').checked;
+  }
   async function loadOffice() {
     officeData = await api('/api/admin/leads?' + leadQuery(), { cache: 'no-store' }); leadPage = officeData.page;
     const kindSelect = $('#lead-kind-filter'), previous = kindSelect.value;
     kindSelect.innerHTML = `<option value="all">${escape(t('All types'))}</option>` + [...new Set([...Object.keys(labels), ...officeData.kinds])].map(k => `<option value="${escape(k)}">${escape(labels[k] || k)}</option>`).join('');
     kindSelect.value = [...kindSelect.options].some(o => o.value === previous) ? previous : 'all';
+    const assigneeFilter = $('#lead-assignee-filter'), assigned = assigneeFilter.value;
+    assigneeFilter.innerHTML = `<option value="all">${escape(t('All employees'))}</option><option value="__unassigned">${escape(t('Unassigned'))}</option>` + officeData.staff.map(u => `<option value="${escape(u.id)}">${escape(u.name)}</option>`).join(''); assigneeFilter.value = assigned;
     const totals = Object.fromEntries(officeData.stats.map(x => [x.status, x.count]));
     const all = Object.values(totals).reduce((a, b) => a + b, 0);
     $('#lead-total').textContent = all;
@@ -74,15 +114,18 @@
     $('#leads-list').innerHTML = officeData.leads.length ? officeData.leads.map(({ lead: l, office: o }) => {
       const overdue = o.dueAt && new Date(o.dueAt) < new Date() && !['completed', 'cancelled'].includes(l.status);
       const assignee = officeData.staff.find(u => u.id === o.assignee)?.name;
-      return `<article class="office-request ${currentLead?.lead.id === l.id ? 'active' : ''}"><div class="office-request-head"><div><div class="eyebrow">${escape(labels[l.kind] || l.kind)} · ${escape(date(l.created_at))}</div><h3>${escape(l.name)}</h3></div><span class="office-badge ${escape(l.status)}">${escape(statuses[l.status] || l.status)}</span></div><div class="actions text-sm mt-3">${l.phone ? `<a class="text-link" href="tel:${escape(l.phone.replace(/[^+\d]/g, ''))}">${escape(l.phone)}</a>` : ''}${l.email ? `<a class="text-link" href="mailto:${escape(l.email)}">${escape(l.email)}</a>` : ''}</div>${o.subject ? `<p class="mt-3">${escape(o.subject)}</p>` : ''}<div class="office-request-foot"><span class="office-badge ${escape(o.priority)}">${escape(priorities[o.priority])}</span>${assignee ? `<span>${escape(assignee)}</span>` : ''}${o.dueAt ? `<span class="${overdue ? 'office-overdue' : ''}">${escape(date(o.dueAt))}</span>` : ''}<button type="button" class="text-link plain-button" data-edit-lead="${escape(l.id)}">${escape(t('Open request'))} →</button></div></article>`;
+      return `<article class="office-request ${currentLead?.lead.id === l.id ? 'active' : ''}"><div class="office-request-head"><label class="request-check"><input type="checkbox" data-select-lead="${escape(l.id)}" ${selectedLeads.has(l.id) ? 'checked' : ''} aria-label="${escape(t('Select request') + ' ' + l.name)}" /></label><div><div class="eyebrow">${escape(labels[l.kind] || l.kind)} · ${escape(date(l.created_at))}</div><h3>${escape(l.name)}</h3></div><span class="office-badge ${escape(l.status)}">${escape(statuses[l.status] || l.status)}</span></div><div class="actions text-sm mt-3">${l.phone ? `<a class="text-link" href="tel:${escape(l.phone.replace(/[^+\d]/g, ''))}">${escape(l.phone)}</a>` : ''}${l.email ? `<a class="text-link" href="mailto:${escape(l.email)}">${escape(l.email)}</a>` : ''}</div>${o.subject ? `<p class="mt-3">${escape(o.subject)}</p>` : ''}<div class="office-request-foot"><span class="office-badge ${escape(o.priority)}">${escape(priorities[o.priority])}</span>${assignee ? `<span>${escape(assignee)}</span>` : ''}${o.dueAt ? `<span class="${overdue ? 'office-overdue' : ''}">${escape(date(o.dueAt))}</span>` : ''}<button type="button" class="text-link plain-button" data-edit-lead="${escape(l.id)}">${escape(t('Open request'))} →</button></div></article>`;
     }).join('') : `<div class="empty-state"><h3>${escape(t('No requests match your filters'))}</h3></div>`;
     $('#lead-page').textContent = `${t('Page')} ${leadPage} / ${Math.max(1, Math.ceil(officeData.total / officeData.pageSize))} · ${officeData.total} ${t('Requests')}`;
     const exportQuery = leadQuery(); exportQuery.delete('page'); $('#lead-export').href = '/api/admin/export?' + exportQuery;
     $('#lead-prev').disabled = leadPage <= 1; $('#lead-next').disabled = leadPage * officeData.pageSize >= officeData.total;
-    icons($('#leads-list'));
+    $('#lead-results-count').textContent = `${officeData.total} ${t('Matching requests')}`;
+    renderSelection(); icons($('#leads-list')); await loadDashboard();
   }
   function fillLead(entry) {
     currentLead = structuredClone(entry); dirty.delete('lead-form');
+    $('#lead-status-label').textContent = statuses[entry.lead.status] || entry.lead.status;
+    $('#lead-status-label').className = 'office-badge ' + entry.lead.status; syncDrafts();
     const f = $('#lead-form'), l = entry.lead, o = entry.office;
     const values = { ...l, ...o, note: '' };
     f.elements.status.innerHTML = Object.entries(statuses).map(([v, title]) => `<option value="${v}">${escape(title)}</option>`).join('');
@@ -104,6 +147,7 @@
     $('#lead-history').innerHTML = (o.history || []).slice().reverse().map(n => `<article>${escape(t(n.action))}${Object.entries(n.changes || {}).map(([key, value]) => `<p>${escape(t(key))}: ${escape(value)}</p>`).join('')}<small>${escape(n.actor)} · ${escape(date(n.at))}</small></article>`).join('') || `<p class="text-sm">${escape(t('Website request'))}</p>`;
   }
   function newLead() {
+    selectTab(tabs.find(tab => tab.dataset.tab === 'leads'));
     if (!discard('lead-form')) return;
     fillLead({ lead: { id: crypto.randomUUID ? crypto.randomUUID() : '10000000-1000-4000-8000-100000000000'.replace(/[018]/g, c => (Number(c) ^ crypto.getRandomValues(new Uint8Array(1))[0] & 15 >> Number(c) / 4).toString(16)), kind: 'service', name: '', phone: '', email: '', message: '', status: 'new', created_at: null }, office: { revision: 0, source: 'phone', priority: 'normal', assignee: '', history: [], notes: [] } });
     $('#lead-form').elements.name.focus();
@@ -112,7 +156,27 @@
   $('#lead-new').addEventListener('click', newLead);
   $('#lead-close').addEventListener('click', () => { if (!discard('lead-form')) return; currentLead = null; $('#lead-editor').hidden = true; });
   $('#lead-search-form').addEventListener('submit', e => { e.preventDefault(); leadPage = 1; void run(loadOffice); });
-  ['lead-filter', 'lead-kind-filter'].forEach(id => $('#' + id).addEventListener('change', () => { leadPage = 1; void run(loadOffice); }));
+  ['lead-filter', 'lead-kind-filter', 'lead-priority-filter', 'lead-assignee-filter', 'lead-source-filter', 'lead-due-filter', 'lead-sort'].forEach(id => $('#' + id).addEventListener('change', () => { leadPage = 1; void run(loadOffice); }));
+  $('#lead-filters-reset').addEventListener('click', () => { resetLeadFilters(); void run(loadOffice); });
+  $('#lead-bulk-status').innerHTML = Object.entries(statuses).map(([value,label]) => `<option value="${value}">${escape(label)}</option>`).join('');
+  $('#lead-select-page').addEventListener('change', e => {
+    for (const entry of officeData.leads) if (e.target.checked) selectedLeads.set(entry.lead.id, entry.office.revision); else selectedLeads.delete(entry.lead.id);
+    $$('[data-select-lead]').forEach(el => { el.checked = selectedLeads.has(el.dataset.selectLead); }); renderSelection();
+  });
+  $('#lead-selection-clear').addEventListener('click', () => { selectedLeads.clear(); $$('[data-select-lead]').forEach(el => { el.checked = false; }); renderSelection(); });
+  root.addEventListener('change', e => {
+    if (!e.target.matches('[data-select-lead]')) return;
+    const id = e.target.dataset.selectLead, entry = officeData.leads.find(x => x.lead.id === id);
+    if (e.target.checked) selectedLeads.set(id, entry.office.revision); else selectedLeads.delete(id); renderSelection();
+  });
+  $('#lead-bulk-apply').addEventListener('click', () => {
+    if (dirty.has('lead-form') || selectedLeads.size > 100) { error(t(selectedLeads.size > 100 ? 'Select no more than 100 requests.' : 'Save or close the request editor before a bulk update.')); return; }
+    if (!confirm(`${t('Apply this status to selected requests?')} (${selectedLeads.size})`)) return;
+    void run(async () => {
+      await post('/api/admin/leads/bulk-status', { revisions:Object.fromEntries(selectedLeads), status:$('#lead-bulk-status').value });
+      selectedLeads.clear(); await loadOffice(); if (currentLead?.lead.created_at) fillLead(await api('/api/admin/lead/' + currentLead.lead.id)); notice(t('Selected requests updated'));
+    });
+  });
   $('#lead-prev').addEventListener('click', () => { leadPage--; void run(loadOffice); });
   $('#lead-next').addEventListener('click', () => { leadPage++; void run(loadOffice); });
   root.addEventListener('click', e => {
@@ -143,9 +207,11 @@
   const tabs = $$('[data-tab]', root);
   function selectTab(tab) {
     tabs.forEach(el => { const active = el === tab; el.classList.toggle('selected', active); el.setAttribute('aria-selected', String(active)); el.tabIndex = active ? 0 : -1; $('#panel-' + el.dataset.tab).hidden = !active; });
-    $('#workspace-title').textContent = tab.textContent.trim();
-    if (['translations', 'content'].includes(tab.dataset.tab) && !cms) void run(loadCms);
-    if (tab.dataset.tab === 'users') void run(loadUsers);
+    $('#workspace-title').textContent = t(({dashboard:'Overview',leads:'Request desk',products:'Product catalog',settings:'Contacts and terms',content:'Articles and services',translations:'Languages and site copy',users:'Team and access'})[tab.dataset.tab]);
+    $('#workspace-subtitle').textContent = t(tab.dataset.tab === 'dashboard' ? 'Your work at a glance' : tab.dataset.tab === 'leads' ? 'Website and office requests in one workspace.' : 'Website management');
+    const url = new URL(location.href); url.searchParams.set('section', tab.dataset.tab); history.replaceState(null,'',url);
+    if (officeData && ['translations', 'content'].includes(tab.dataset.tab) && !cms) void run(loadCms);
+    if (officeData && tab.dataset.tab === 'users') void run(loadUsers);
   }
   tabs.forEach((tab, index) => {
     tab.addEventListener('click', () => selectTab(tab));
@@ -157,21 +223,33 @@
   });
   $('#admin-refresh').addEventListener('click', () => {
     if ((dirty.size || Object.keys(translationDraft).length) && !confirm(t('Discard unsaved changes?'))) return;
-    dirty.clear(); translationDraft = {}; cms = null; currentLead = null; $('#lead-editor').hidden = true;
-    void run(async () => { await load(); const tab = tabs.find(x => x.getAttribute('aria-selected') === 'true'); if (['translations', 'content'].includes(tab?.dataset.tab)) await loadCms(); if (tab?.dataset.tab === 'users') await loadUsers(); });
+    dirty.clear(); selectedLeads.clear(); translationDraft = {}; cms = null; currentLead = null; $('#lead-editor').hidden = true;
+    void run(load);
   });
   document.addEventListener('click', e => { if (e.target.closest('[data-action="dialog-close"]')) closeDialog(); });
   function renderProducts() {
-    $('#product-list').innerHTML = products.map(p => `<button type="button" data-edit-product="${escape(p.slug)}" class="${p.slug === selected?.slug ? 'selected' : ''}">${escape(p.title)}<small>${p.demo ? t("Ցուցադրական") : t("Իրական ապրանք")}</small></button>`).join('');
+    if (!isAdmin) return;
+    const query = $('#product-search').value.trim().toLocaleLowerCase(), category = $('#product-category-filter').value, state = $('#product-state-filter').value;
+    const list = products.filter(p => [p.title,p.slug,p.model,p.brand].join(' ').toLocaleLowerCase().includes(query) && (category === 'all' || category === p.category) && (state === 'all' || state === 'real' && !p.demo || state === 'demo' && p.demo || state === 'no-price' && p.price === null || state === 'no-description' && !p.description.trim()));
+    list.sort($('#product-sort').value === 'price' ? (a,b) => (a.price ?? Infinity) - (b.price ?? Infinity) : (a,b) => a.title.localeCompare(b.title, document.documentElement.lang));
+    productPages = Math.max(1,Math.ceil(list.length/12)); productPage = Math.max(1,Math.min(productPage,productPages));
+    $('#product-metrics').innerHTML = [[t('All products'),products.length],[t('Real products'),products.filter(p => !p.demo).length],[t('Missing price'),products.filter(p => p.price === null).length]].map(([label,count]) => `<div class="catalog-metric"><span>${escape(label)}</span><strong>${count}</strong></div>`).join('');
+    $('#product-count').textContent = `${list.length} / ${products.length} ${t('Products')}`;
+    $('#product-page').textContent = `${productPage} / ${productPages}`;
+    $('#product-prev').disabled = productPage <= 1; $('#product-next').disabled = productPage >= productPages;
+    $('#product-list').innerHTML = list.length ? list.slice((productPage-1)*12, productPage*12).map(p => `<button type="button" data-edit-product="${escape(p.slug)}" class="managed-product ${!$('#product-form').hidden && p.slug === selected?.slug ? 'selected' : ''}"><img src="${escape(p.image)}" alt="" width="72" height="72" loading="lazy" /><span class="managed-product-copy"><strong>${escape(p.title)}</strong><small>${escape(p.model || p.slug)}</small><span class="office-badge">${escape(p.category === 'heater' ? t('Ջրատաքացուցիչ') : t('Պահեստամաս'))}</span></span><span class="managed-product-price"><strong>${p.price === null ? escape(t('Price to be confirmed')) : escape(p.price.toLocaleString(document.documentElement.lang) + ' AMD')}</strong><small>${escape(p.demo ? t('Demonstration') : t('Real products'))}</small><span>↗</span></span></button>`).join('') : `<div class="empty-state"><h3>${escape(t('No products match these filters'))}</h3><p>${escape(t('Change the search or filters to see more products.'))}</p></div>`;
   }
-  function fillProduct(p) {
-    selected = structuredClone(p); const form = $('#product-form');
-    ['slug', 'title', 'category', 'brand', 'model', 'availability', 'description'].forEach(name => { form.elements[name].value = p[name] ?? ''; });
-    ['price', 'volume'].forEach(name => { form.elements[name].value = p[name] ?? ''; });
+  function fillProduct(p, reveal = true) {
+    selected = structuredClone(p); productBaseline = structuredClone(p); dirty.delete('product-form'); const form = $('#product-form');
+    if (reveal) form.hidden = false;
+    ['slug', 'title', 'category', 'brand', 'model', 'availability', 'description', 'price', 'volume'].forEach(name => { form.elements[name].value = p[name] ?? ''; });
+    form.elements.slug.readOnly = products.some(item => item.slug === p.slug);
     form.elements.specs.value = Object.entries(p.specs).map(([key, value]) => `${key}: ${value}`).join('\n');
     form.elements.demo.checked = p.demo;
+    $('#product-editor-title').textContent = p.title; $('#product-status-label').textContent = t(p.demo ? 'Demonstration examples' : 'Real products');
+    $('#product-public-link').href = window.Jermiq.link('/products/' + p.slug); $('#product-public-link').hidden = !products.some(item => item.slug === p.slug);
     $('#product-preview').src = p.image; $('#product-image-upload').value = '';
-    renderProducts();
+    renderProducts(); syncDrafts(); if (reveal && innerWidth <= 1100) form.scrollIntoView?.({behavior:'smooth',block:'start'});
   }
   function fillSettings() {
     const form = $('#settings-form');
@@ -181,6 +259,11 @@
   }
   if (isAdmin) {
   root.addEventListener('click', event => { const edit = event.target.closest('[data-edit-product]'); if (edit && discard('product-form')) { fillProduct(products.find(p => p.slug === edit.dataset.editProduct)); notice(''); } });
+  ['product-search','product-category-filter','product-state-filter','product-sort'].forEach(id => $('#' + id).addEventListener(id === 'product-search' ? 'input' : 'change', () => { productPage = 1; renderProducts(); }));
+  $('#product-prev').addEventListener('click', () => { productPage--; renderProducts(); });
+  $('#product-next').addEventListener('click', () => { productPage++; renderProducts(); });
+  $('#product-close').addEventListener('click', () => { if (discard('product-form')) { $('#product-form').hidden = true; syncDrafts(); } });
+  $('#product-reset').addEventListener('click', () => { if (discard('product-form')) fillProduct(productBaseline); });
   $('#product-new').addEventListener('click', () => { if (!discard('product-form')) return; fillProduct({ slug: `new-${Date.now()}`, title: t("Նոր ապրանք"), category: 'heater', volume: null, brand: '', model: '', description: '', price: null, availability: t("Առկայությունը ճշտվում է"), specs: {}, image: '/images/hero.webp', demo: false }); });
   $('#product-image-upload').addEventListener('change', async event => {
     const file = event.target.files?.[0]; if (!file || !selected) return;
@@ -199,6 +282,9 @@
     ['slug', 'title', 'category', 'brand', 'model', 'description', 'availability'].forEach(key => { p[key] = String(data.get(key)).trim(); });
     ['price', 'volume'].forEach(key => { p[key] = data.get(key) === '' ? null : Number(data.get(key)); });
     p.demo = data.get('demo') === 'on';
+    const lines = String(data.get('specs')).split('\n').filter(line => line.trim());
+    const names = lines.map(line => line.slice(0,line.indexOf(':')).trim());
+    if (lines.some(line => !line.includes(':') || !line.slice(0,line.indexOf(':')).trim()) || new Set(names).size !== names.length) { error(t('Use one unique specification name: value per line.')); return; }
     p.specs = Object.fromEntries(String(data.get('specs')).split('\n').filter(line => line.includes(':')).map(line => { const at = line.indexOf(':'); return [line.slice(0, at).trim(), line.slice(at + 1).trim()]; }));
     selected = p; void run(async () => { await mutate({ action: 'product', product: p }); dirty.delete('product-form'); cms = null; });
   });
@@ -250,7 +336,8 @@
   function renderContent() {
     if (!cms) return;
     const type = contentType();
-    $('#content-list').innerHTML = cms[type].map((item, index) => `<button type="button" data-content-index="${index}">${escape(item.title)}<small>${escape(item.slug || item.id)}</small></button>`).join('');
+    const query = $('#content-search').value.toLocaleLowerCase();
+    $('#content-list').innerHTML = cms[type].map((item,index) => ({item,index})).filter(({item}) => [item.title,item.slug || item.id].join(' ').toLocaleLowerCase().includes(query)).map(({item,index}) => `<button type="button" data-content-index="${index}">${escape(item.title)}<small>${escape(item.slug || item.id)}</small></button>`).join('');
     if (!currentContent || currentContent.type !== type) fillContent(cms[type][0] || null);
   }
   function fillContent(item) {
@@ -270,6 +357,7 @@
   $('#section-add').addEventListener('click', () => { addSection(); dirty.add('content-form'); });
   $('#content-list').addEventListener('click', e => { const button = e.target.closest('[data-content-index]'); if (button && discard('content-form')) fillContent(cms[contentType()][Number(button.dataset.contentIndex)]); });
   $('#content-type').addEventListener('change', () => { if (!discard('content-form')) { $('#content-type').value = currentContent.type; return; } currentContent = null; renderContent(); });
+  $('#content-search').addEventListener('input', renderContent);
   $('#content-new').addEventListener('click', () => { if (discard('content-form')) { fillContent(null); $('#content-form').elements.key.focus(); } });
   $('#content-form').addEventListener('submit', e => { e.preventDefault(); void run(async () => {
     const f = e.target, type = contentType();
@@ -285,9 +373,16 @@
   }); });
   loadUsers = async function () {
     users = (await api('/api/admin/users', { cache: 'no-store' })).users;
-    $('#user-list').innerHTML = users.map((u, i) => `<button type="button" data-user-index="${i}">${escape(u.email)}<small>${escape(u.role === 'Admin' ? t('Administrator') : t('Office employee'))} · ${escape(u.disabled ? t('Disabled') : t('Active'))}</small></button>`).join('');
+    renderUsers();
     if (!dirty.has('user-form')) fillUser(users.find(x => x.id === currentUser?.id) || null);
   }
+  function renderUsers() {
+    const query = $('#user-search').value.toLocaleLowerCase(), filter = $('#user-filter').value;
+    const list = users.map((u,i) => ({u,i})).filter(({u}) => u.email.toLocaleLowerCase().includes(query) && (filter === 'all' || filter === 'disabled' && u.disabled || filter === u.role));
+    $('#user-count').textContent = `${list.length} / ${users.length}`;
+    $('#user-list').innerHTML = list.map(({u,i}) => `<button type="button" data-user-index="${i}">${escape(u.email)}<small>${escape(u.role === 'Admin' ? t('Administrator') : t('Office employee'))} · ${escape(u.disabled ? t('Disabled') : t('Active'))}</small></button>`).join('');
+  }
+  ['user-search','user-filter'].forEach(id => $('#' + id).addEventListener(id === 'user-search' ? 'input' : 'change',renderUsers));
   function fillUser(user) {
     currentUser = user; const f = $('#user-form'); f.reset(); f.elements.email.value = user?.email || ''; f.elements.email.readOnly = !!user;
     f.elements.role.value = user?.role || 'Office'; f.elements.disabled.checked = user?.disabled || false; f.elements.password.required = !user; dirty.delete('user-form');
@@ -299,5 +394,16 @@
     await post('/api/admin/users', data); e.target.elements.password.value = ''; dirty.delete('user-form'); await loadUsers(); notice(t('Saved'));
   }); });
   }
-  selectTab(tabs[0]); void run(load);
+  root.addEventListener('click', e => {
+    const quick = e.target.closest('[data-quick]');
+    if (quick) { selectTab(tabs.find(tab => tab.dataset.tab === (quick.dataset.quick === 'new-lead' ? 'leads' : quick.dataset.quick))); if (quick.dataset.quick === 'new-lead') newLead(); }
+    const attention = e.target.closest('[data-attention]');
+    if (attention) { resetLeadFilters(); const key = attention.dataset.attention; if (key === 'overdue') $('#lead-due-filter').value = 'overdue'; if (key === 'urgent') $('#lead-priority-filter').value = 'urgent'; if (key === 'unassigned') $('#lead-assignee-filter').value = '__unassigned'; selectTab(tabs.find(tab => tab.dataset.tab === 'leads')); void run(loadOffice); }
+    const catalogFilter = e.target.closest('[data-catalog-filter]');
+    if (catalogFilter && isAdmin) { $('#product-search').value = ''; $('#product-category-filter').value = 'all'; $('#product-state-filter').value = catalogFilter.dataset.catalogFilter; productPage = 1; selectTab(tabs.find(tab => tab.dataset.tab === 'products')); renderProducts(); }
+    const recent = e.target.closest('[data-dashboard-lead]');
+    if (recent && discard('lead-form')) { selectTab(tabs.find(tab => tab.dataset.tab === 'leads')); void run(async () => { fillLead(await api('/api/admin/lead/' + recent.dataset.dashboardLead)); }); }
+  });
+  const requested = new URLSearchParams(location.search).get('section');
+  selectTab(tabs.find(tab => tab.dataset.tab === requested) || tabs.find(tab => tab.dataset.tab === 'dashboard')); void run(load);
 })();

@@ -26,11 +26,15 @@ public sealed class CatalogService(AppDbContext db, ContentLocalizer localizer)
 {
     public async Task<List<Product>> GetProductsAsync(CancellationToken ct = default, bool localized = true) =>
         (await db.Products.AsNoTracking().OrderBy(x => x.UpdatedAt).ThenBy(x => x.Slug).ToListAsync(ct))
-        .Select(x => Localize(SiteJson.Deserialize<Product>(x.Data), localized)).ToList();
+        .Select(x => Localize(ReadProduct(x), localized)).ToList();
     public async Task<Product?> GetProductAsync(string slug, CancellationToken ct = default)
     {
         var row = await db.Products.AsNoTracking().SingleOrDefaultAsync(x => x.Slug == slug, ct);
-        return row is null ? null : Localize(SiteJson.Deserialize<Product>(row.Data), true);
+        return row is null ? null : Localize(ReadProduct(row), true);
+    }
+    private static Product ReadProduct(ProductRecord row)
+    {
+        var product = SiteJson.Deserialize<Product>(row.Data); product.Revision = row.UpdatedAt; return product;
     }
     private Product Localize(Product p, bool localized)
     {

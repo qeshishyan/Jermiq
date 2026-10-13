@@ -48,7 +48,8 @@ for (const [language, cartTitle, success] of [['en', 'Your order list', 'Your re
 const dom = await page('/admin?lang=en', true), w = dom.window, d = w.document;
 const click = selector => { const el = d.querySelector(selector); assert.ok(el, selector); el.click(); };
 await wait(() => d.querySelectorAll('.office-stat').length === 4 && !d.querySelector('#lead-new').disabled);
-check('Office dashboard loaded', d.querySelector('#workspace-title').textContent.includes('Requests'));
+check('Office dashboard loaded', d.querySelector('#workspace-title').textContent === 'Overview' && d.querySelectorAll('.overview-metric').length === 4);
+click('[data-tab="leads"]');
 await wait(() => d.querySelector('#arrival-connection').textContent === 'Live updates connected');
 check('Existing requests do not trigger alerts on opening', d.querySelector('#arrival-banner').hidden && !d.title.includes('New requests'));
 let tones = 0;
@@ -99,6 +100,29 @@ check('Office UI updates status and preserves notes', form.elements.status.value
 d.querySelector('#lead-search').value = 'Office UI customer'; d.querySelector('#lead-search-form').dispatchEvent(new w.Event('submit', { bubbles: true, cancelable: true }));
 await wait(() => d.querySelectorAll('.office-request').length === 1 && !d.querySelector('#lead-new').disabled);
 check('Office UI searches real requests', d.querySelector('.office-request h3').textContent === 'Office UI customer');
+click('#lead-close');
+d.querySelector('#lead-select-page').checked = true; d.querySelector('#lead-select-page').dispatchEvent(new w.Event('change', {bubbles:true}));
+d.querySelector('#lead-bulk-status').value = 'waiting'; click('#lead-bulk-apply');
+await wait(() => d.querySelector('#lead-bulk').hidden && !d.querySelector('#lead-new').disabled);
+check('Bulk status changes selected requests through the UI', d.querySelector('.office-request .office-badge.waiting'));
+click('[data-tab="products"]');
+d.querySelector('#product-search').value = 'PRO1 R 80 V'; d.querySelector('#product-search').dispatchEvent(new w.Event('input'));
+check('Product search finds model codes', d.querySelectorAll('[data-edit-product]').length === 1);
+click('[data-edit-product]');
+const productForm = d.querySelector('#product-form');
+check('Existing product slug is protected in the editor', productForm.elements.slug.readOnly && !productForm.hidden);
+productForm.elements.title.value = 'Unsaved product title'; productForm.elements.title.dispatchEvent(new w.Event('input', {bubbles:true}));
+click('[data-tab="settings"]'); const settingsForm = d.querySelector('#settings-form'); settingsForm.elements.phone.value = '+374 99 444444'; settingsForm.dispatchEvent(new w.Event('submit',{bubbles:true,cancelable:true}));
+await wait(() => !d.querySelector('#admin-refresh').disabled && d.querySelector('#admin-notice').textContent === 'Saved');
+click('[data-tab="products"]');
+check('Saving settings preserves an unsaved product draft', productForm.elements.title.value === 'Unsaved product title' && d.querySelector('[data-dirty-for="product-form"]').textContent === 'Unsaved changes');
+click('#product-reset');
+check('Product reset restores the last saved version', productForm.elements.title.value !== 'Unsaved product title');
+d.querySelector('#product-category-filter').value = 'part'; d.querySelector('#product-category-filter').dispatchEvent(new w.Event('change'));
+check('Product category and model filters combine', d.querySelectorAll('[data-edit-product]').length === 0 && d.querySelector('#product-list').textContent.includes('No products'));
+d.querySelector('#product-search').value = ''; d.querySelector('#product-search').dispatchEvent(new w.Event('input'));
+d.querySelector('#product-category-filter').value = 'all'; d.querySelector('#product-category-filter').dispatchEvent(new w.Event('change'));
+
 click('[data-tab="translations"]'); await wait(() => d.querySelectorAll('.translation-row').length > 0 && !d.querySelector('#translations-save').disabled);
 check('CMS has editable fields in all languages', d.querySelectorAll('.translation-row')[0].querySelectorAll('textarea').length === 3);
 const search = d.querySelector('#translation-search'); search.value = 'Ձեր տան տաք ջրի համար'; search.dispatchEvent(new w.Event('input'));
@@ -112,4 +136,8 @@ check('CMS creates an article through structured fields', (await raw('/guide/ui-
 click('[data-tab="users"]'); await wait(() => d.querySelectorAll('[data-user-index]').length >= 2 && !d.querySelector('#user-new').disabled);
 check('Team management loads real accounts', d.querySelector('#user-list').textContent.includes('office@example.invalid'));
 w.dispatchEvent(new w.Event('pagehide')); w.close();
+const deep = await page('/admin?lang=en&section=products', true);
+await wait(() => deep.window.document.querySelectorAll('[data-edit-product]').length > 0 && !deep.window.document.querySelector('#admin-refresh').disabled);
+check('Direct links initialize the requested management page', !deep.window.document.querySelector('#panel-products').hidden && deep.window.document.querySelector('#workspace-title').textContent === 'Product catalog');
+deep.window.dispatchEvent(new deep.window.Event('pagehide')); deep.window.close();
 console.log(JSON.stringify({ backofficeFrontendPassed: checks.length, checks }, null, 2));

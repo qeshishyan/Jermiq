@@ -33,7 +33,8 @@ public static class BackOfficeEndpoints
             const int pageSize = 25;
             var total = await query.CountAsync(ct);
             page = Math.Min(page, Math.Max(1, (total + pageSize - 1) / pageSize));
-            var leads = await query.OrderByDescending(x => x.CreatedAt).ThenBy(x => x.Id).Skip((page - 1) * pageSize).Take(pageSize).ToListAsync(ct);
+            var ordered = ctx.Request.Query["sort"] == "oldest" ? query.OrderBy(x => x.CreatedAt).ThenBy(x => x.Id) : query.OrderByDescending(x => x.CreatedAt).ThenBy(x => x.Id);
+            var leads = await ordered.Skip((page - 1) * pageSize).Take(pageSize).ToListAsync(ct);
             var keys = leads.Select(x => "office:" + x.Id).ToArray();
             var rows = await db.Settings.AsNoTracking().Where(x => keys.Contains(x.Key)).ToDictionaryAsync(x => x.Key, ct);
             var staff = await users.GetUsersInRoleAsync("Office");
@@ -112,12 +113,26 @@ public static class BackOfficeEndpoints
     }
     private static IQueryable<Lead> Filter(AppDbContext db, HttpContext ctx)
     {
-        var query = db.Leads.AsNoTracking();
-        var search = ctx.Request.Query["q"].ToString().Trim().ToLowerInvariant();
+        string Option(string key) { var value = ctx.Request.Query[key].ToString(); return value == "all" ? "" : value; }
+        var priority = Option("priority"); var source = Option("source"); var assignee = Option("assignee"); var due = Option("due");
+        var search = ctx.Request.Query["q"].ToString().Trim();
         if (search.Length > 200) search = search[..200];
-        if (search.Length > 0) query = query.Where(x => x.Name.ToLower().Contains(search) || x.Phone.Contains(search) || x.Email.ToLower().Contains(search) || x.Message.ToLower().Contains(search) || x.Id.Contains(search) || x.Details.ToLower().Contains(search));
-        var status = ctx.Request.Query["status"].ToString();
-        var kind = ctx.Request.Query["kind"].ToString();
+        // EF's SQLite connection registers .NET REGEXP. Literal escaping prevents user regex patterns.
+        var pattern = search.Length > 0 ? "(?i)" + Regex.Escape(search) : "";
+        var query = db.Leads.FromSql($"""
+            SELECT l.* FROM "Leads" AS l LEFT JOIN "Settings" AS s ON s."Key" = 'office:' || l."Id"
+            WHERE ({priority} = '' OR COALESCE(json_extract(s."Value", '$.priority'), 'normal') = {priority})
+            AND ({source} = '' OR COALESCE(json_extract(s."Value", '$.source'), 'website') = {source})
+            AND ({assignee} = '' OR ({assignee} = '__unassigned' AND COALESCE(json_extract(s."Value", '$.assignee'), '') = '') OR json_extract(s."Value", '$.assignee') = {assignee})
+            AND ({due} != 'overdue' OR (l."Status" NOT IN ('completed', 'cancelled') AND julianday(json_extract(s."Value", '$.dueAt')) < julianday('now')))
+            AND ({pattern} = '' OR l."Name" REGEXP {pattern} OR l."Phone" REGEXP {pattern} OR l."Email" REGEXP {pattern}
+                OR l."Message" REGEXP {pattern} OR l."Id" REGEXP {pattern}
+                OR (CASE WHEN json_valid(l."Details") THEN json_extract(l."Details", '$.subject') ELSE l."Details" END) REGEXP {pattern}
+                OR (CASE WHEN json_valid(l."Details") THEN json_extract(l."Details", '$.brand') ELSE '' END) REGEXP {pattern}
+                OR (CASE WHEN json_valid(l."Details") THEN json_extract(l."Details", '$.model') ELSE '' END) REGEXP {pattern}
+                OR (CASE WHEN json_valid(l."Details") THEN json_extract(l."Details", '$.selection') ELSE '' END) REGEXP {pattern})
+            """).AsNoTracking();
+        var status = ctx.Request.Query["status"].ToString(); var kind = ctx.Request.Query["kind"].ToString();
         if (status.Length > 0 && status != "all") query = query.Where(x => x.Status == status);
         if (kind.Length > 0 && kind != "all") query = query.Where(x => x.Kind == kind);
         return query;

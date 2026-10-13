@@ -6,6 +6,7 @@ namespace Jermiq.Web.Models;
 // The JSON contract preserves the fields from the original React/Sites catalog.
 public sealed class Product
 {
+    public long Revision { get; set; }
     [Required, RegularExpression("^[a-z0-9-]{2,80}$")] public string Slug { get; set; } = "";
     [Required, StringLength(200, MinimumLength = 2)] public string Title { get; set; } = "";
     [Required, RegularExpression("^(heater|part)$")] public string Category { get; set; } = "heater";

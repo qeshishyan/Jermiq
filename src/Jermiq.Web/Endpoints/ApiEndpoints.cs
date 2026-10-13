@@ -136,6 +136,7 @@ public static class ApiEndpoints
         try { body = await ctx.Request.ReadFromJsonAsync<AdminMutation>(ct); }
         catch (JsonException) { return Error("Հարցման ձևաչափը սխալ է։"); }
         if (body is null) return Error("Հարցումը դատարկ է։");
+        await using var transaction = await db.Database.BeginTransactionAsync(ct);
         switch (body.Action)
         {
             case "product":
@@ -145,9 +146,10 @@ public static class ApiEndpoints
                     !Regex.IsMatch(p.Image ?? "", "^/(images/(hero|parts)\\.webp|api/product-image\\?id=[a-f0-9-]{36})$"))
                     return Error("Ստուգեք ապրանքի լրացված տվյալները։");
                 var row = await db.Products.SingleOrDefaultAsync(x => x.Slug == p.Slug, ct);
+                if (p.Revision != (row?.UpdatedAt ?? 0)) return Error("This product changed in another session. Reopen it before saving.", 409);
                 if (row is null) db.Products.Add(row = new ProductRecord { Slug = p.Slug });
                 row.Data = SiteJson.Serialize(p);
-                row.UpdatedAt = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+                row.UpdatedAt = Math.Max(DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(), row.UpdatedAt + 1);
                 break;
             case "settings":
                 var settings = body.Settings;
@@ -178,6 +180,7 @@ public static class ApiEndpoints
                     if (metadata is not null) db.Settings.Remove(metadata);
                     db.Leads.Remove(lead);
                     await db.SaveChangesAsync(ct);
+                    await transaction.CommitAsync(ct);
                     storage.Delete(lead.Attachment);
                     return Results.Json(new { ok = true });
                 }
@@ -185,10 +188,11 @@ public static class ApiEndpoints
             default: return Error("Անհայտ գործողություն։");
         }
         await db.SaveChangesAsync(ct);
+        await transaction.CommitAsync(ct);
         return Results.Json(new { ok = true });
     }
     private static bool Valid(object model) => Validator.TryValidateObject(model, new ValidationContext(model), [], true);
-    private static IResult Error(string error, int status = 400) => Results.Json(new { error }, statusCode: status);
+    private static IResult Error(string error, int status = 400) => new LocalizedError(error, status);
     private sealed class AdminMutation
     {
         public string Action { get; set; } = "";

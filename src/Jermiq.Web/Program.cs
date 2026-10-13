@@ -179,6 +179,7 @@ app.UseAntiforgery();
 app.MapRazorPages();
 app.MapJermiqApi();
 app.MapBackOfficeApi();
+app.MapManagementApi();
 app.MapSeoEndpoints();
 app.MapGet("/health", () => Results.Json(new { status = "ok" }));
 app.MapFallback("/api/{**path}", () => new LocalizedError("API հասցեն չի գտնվել։", 404));

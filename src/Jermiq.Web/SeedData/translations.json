@@ -2718,5 +2718,405 @@
     "hy": "Թարմացումների նույնացուցիչը սխալ է։",
     "en": "Invalid arrival cursor.",
     "ru": "Некорректный курсор обновлений."
+  },
+  "Active requests": {
+    "hy": "Ակտիվ հայտեր",
+    "en": "Active requests",
+    "ru": "Активные заявки"
+  },
+  "All categories": {
+    "hy": "Բոլոր բաժինները",
+    "en": "All categories",
+    "ru": "Все категории"
+  },
+  "All channels": {
+    "hy": "Բոլոր աղբյուրները",
+    "en": "All channels",
+    "ru": "Все каналы"
+  },
+  "All deadlines": {
+    "hy": "Բոլոր ժամկետները",
+    "en": "All deadlines",
+    "ru": "Все сроки"
+  },
+  "All employees": {
+    "hy": "Բոլոր աշխատակիցները",
+    "en": "All employees",
+    "ru": "Все сотрудники"
+  },
+  "All priorities": {
+    "hy": "Բոլոր առաջնահերթությունները",
+    "en": "All priorities",
+    "ru": "Все приоритеты"
+  },
+  "All products": {
+    "hy": "Բոլոր ապրանքները",
+    "en": "All products",
+    "ru": "Все товары"
+  },
+  "Apply status": {
+    "hy": "Փոխել կարգավիճակը",
+    "en": "Apply status",
+    "ru": "Применить статус"
+  },
+  "Apply this status to selected requests?": {
+    "hy": "Փոխե՞լ ընտրված հայտերի կարգավիճակը։",
+    "en": "Apply this status to selected requests?",
+    "ru": "Изменить статус выбранных заявок?"
+  },
+  "Bulk status update": {
+    "hy": "Խմբային կարգավիճակի փոփոխություն",
+    "en": "Bulk status update",
+    "ru": "Групповое изменение статуса"
+  },
+  "By title": {
+    "hy": "Ըստ անվանման",
+    "en": "By title",
+    "ru": "По названию"
+  },
+  "Catalog readiness": {
+    "hy": "Կատալոգի լրացման վիճակ",
+    "en": "Catalog readiness",
+    "ru": "Готовность каталога"
+  },
+  "Change the search or filters to see more products.": {
+    "hy": "Ավելի շատ ապրանքներ տեսնելու համար փոխեք որոնումը կամ ֆիլտրերը։",
+    "en": "Change the search or filters to see more products.",
+    "ru": "Измените поиск или фильтры, чтобы увидеть больше товаров."
+  },
+  "Clear selection": {
+    "hy": "Մաքրել ընտրությունը",
+    "en": "Clear selection",
+    "ru": "Снять выделение"
+  },
+  "Contact information": {
+    "hy": "Կոնտակտային տվյալներ",
+    "en": "Contact information",
+    "ru": "Контактные данные"
+  },
+  "Contacts and terms": {
+    "hy": "Կոնտակտներ և պայմաններ",
+    "en": "Contacts and terms",
+    "ru": "Контакты и условия"
+  },
+  "Content editor": {
+    "hy": "Բովանդակության խմբագրիչ",
+    "en": "Content editor",
+    "ru": "Редактор материалов"
+  },
+  "Customer and equipment": {
+    "hy": "Հաճախորդ և սարք",
+    "en": "Customer and equipment",
+    "ru": "Клиент и оборудование"
+  },
+  "Daily workspace": {
+    "hy": "Օրվա աշխատանք",
+    "en": "Daily workspace",
+    "ru": "Работа на сегодня"
+  },
+  "Delivery and warranty": {
+    "hy": "Առաքում և երաշխիք",
+    "en": "Delivery and warranty",
+    "ru": "Доставка и гарантия"
+  },
+  "Demonstration": {
+    "hy": "Ցուցադրական",
+    "en": "Demonstration",
+    "ru": "Демонстрационный"
+  },
+  "Demonstration examples": {
+    "hy": "Ցուցադրական օրինակներ",
+    "en": "Demonstration examples",
+    "ru": "Демонстрационные примеры"
+  },
+  "Description and specifications": {
+    "hy": "Նկարագրություն և բնութագրեր",
+    "en": "Description and specifications",
+    "ru": "Описание и характеристики"
+  },
+  "Employee access": {
+    "hy": "Աշխատակցի հասանելիություն",
+    "en": "Employee access",
+    "ru": "Доступ сотрудника"
+  },
+  "Existing page addresses are protected to preserve links.": {
+    "hy": "Գործող էջերի հասցեները պաշտպանված են՝ հղումները պահպանելու համար։",
+    "en": "Existing page addresses are protected to preserve links.",
+    "ru": "Адреса существующих страниц защищены для сохранения ссылок."
+  },
+  "Find incomplete product data before publishing.": {
+    "hy": "Գտեք ապրանքների թերի տվյալները մինչև հրապարակումը։",
+    "en": "Find incomplete product data before publishing.",
+    "ru": "Найдите незаполненные данные товаров до публикации."
+  },
+  "Identity and category": {
+    "hy": "Անվանում և բաժին",
+    "en": "Identity and category",
+    "ru": "Название и категория"
+  },
+  "Intake details": {
+    "hy": "Հայտի ընդունման տվյալներ",
+    "en": "Intake details",
+    "ru": "Данные поступления заявки"
+  },
+  "Invalid bulk selection.": {
+    "hy": "Խմբային ընտրության տվյալները սխալ են։",
+    "en": "Invalid bulk selection.",
+    "ru": "Некорректные данные группового выбора."
+  },
+  "Keep customer-facing information accurate and consistent.": {
+    "hy": "Պահպանեք հաճախորդներին ցուցադրվող տվյալների ճշտությունն ու միատեսակությունը։",
+    "en": "Keep customer-facing information accurate and consistent.",
+    "ru": "Поддерживайте точность и единообразие информации для клиентов."
+  },
+  "Manage catalog": {
+    "hy": "Կառավարել կատալոգը",
+    "en": "Manage catalog",
+    "ru": "Управлять каталогом"
+  },
+  "Manage product details, prices, images and availability.": {
+    "hy": "Կառավարեք ապրանքների տվյալները, գները, նկարներն ու առկայությունը։",
+    "en": "Manage product details, prices, images and availability.",
+    "ru": "Управляйте данными товаров, ценами, изображениями и наличием."
+  },
+  "Matching requests": {
+    "hy": "համապատասխան հայտ",
+    "en": "Matching requests",
+    "ru": "подходящих заявок"
+  },
+  "Missing description": {
+    "hy": "Առանց նկարագրության",
+    "en": "Missing description",
+    "ru": "Без описания"
+  },
+  "Missing price": {
+    "hy": "Առանց գնի",
+    "en": "Missing price",
+    "ru": "Без цены"
+  },
+  "More filters": {
+    "hy": "Լրացուցիչ ֆիլտրեր",
+    "en": "More filters",
+    "ru": "Дополнительные фильтры"
+  },
+  "Needs attention": {
+    "hy": "Ուշադրության կարիք ունի",
+    "en": "Needs attention",
+    "ru": "Требует внимания"
+  },
+  "New arrivals keep updating while you work. Your unsaved edits stay safe.": {
+    "hy": "Նոր հայտերը թարմացվում են աշխատանքի ընթացքում։ Չպահպանված փոփոխությունները պահպանվում են։",
+    "en": "New arrivals keep updating while you work. Your unsaved edits stay safe.",
+    "ru": "Новые заявки обновляются во время работы. Несохранённые изменения остаются в редакторе."
+  },
+  "Newest first": {
+    "hy": "Սկզբում նորերը",
+    "en": "Newest first",
+    "ru": "Сначала новые"
+  },
+  "No products match these filters": {
+    "hy": "Այս ֆիլտրերով ապրանքներ չկան",
+    "en": "No products match these filters",
+    "ru": "По этим фильтрам товаров нет"
+  },
+  "No requests yet": {
+    "hy": "Դեռ հայտեր չկան",
+    "en": "No requests yet",
+    "ru": "Заявок пока нет"
+  },
+  "Oldest first": {
+    "hy": "Սկզբում հները",
+    "en": "Oldest first",
+    "ru": "Сначала старые"
+  },
+  "Overdue": {
+    "hy": "Ժամկետանց",
+    "en": "Overdue",
+    "ru": "Просрочено"
+  },
+  "Overview": {
+    "hy": "Ամփոփում",
+    "en": "Overview",
+    "ru": "Обзор"
+  },
+  "Preview product": {
+    "hy": "Դիտել ապրանքը",
+    "en": "Preview product",
+    "ru": "Просмотр товара"
+  },
+  "Price and availability": {
+    "hy": "Գին և առկայություն",
+    "en": "Price and availability",
+    "ru": "Цена и наличие"
+  },
+  "Price ascending": {
+    "hy": "Գին՝ ցածրից բարձր",
+    "en": "Price ascending",
+    "ru": "Цена по возрастанию"
+  },
+  "Price to be confirmed": {
+    "hy": "Գինը ճշտվում է",
+    "en": "Price to be confirmed",
+    "ru": "Цена уточняется"
+  },
+  "Product catalog": {
+    "hy": "Ապրանքների կատալոգ",
+    "en": "Product catalog",
+    "ru": "Каталог товаров"
+  },
+  "Product editor": {
+    "hy": "Ապրանքի խմբագրիչ",
+    "en": "Product editor",
+    "ru": "Редактор товара"
+  },
+  "Products": {
+    "hy": "ապրանք",
+    "en": "Products",
+    "ru": "товаров"
+  },
+  "Real products": {
+    "hy": "Իրական ապրանքներ",
+    "en": "Real products",
+    "ru": "Реальные товары"
+  },
+  "Recent requests": {
+    "hy": "Վերջին հայտերը",
+    "en": "Recent requests",
+    "ru": "Последние заявки"
+  },
+  "Reset changes": {
+    "hy": "Չեղարկել փոփոխությունները",
+    "en": "Reset changes",
+    "ru": "Сбросить изменения"
+  },
+  "Reset filters": {
+    "hy": "Մաքրել ֆիլտրերը",
+    "en": "Reset filters",
+    "ru": "Сбросить фильтры"
+  },
+  "Save or close the request editor before a bulk update.": {
+    "hy": "Խմբային փոփոխությունից առաջ պահպանեք կամ փակեք հայտի խմբագրիչը։",
+    "en": "Save or close the request editor before a bulk update.",
+    "ru": "Перед групповым обновлением сохраните или закройте редактор заявки."
+  },
+  "Saved version": {
+    "hy": "Պահպանված տարբերակ",
+    "en": "Saved version",
+    "ru": "Сохранённая версия"
+  },
+  "Search content…": {
+    "hy": "Որոնել բովանդակությունը…",
+    "en": "Search content…",
+    "ru": "Поиск материалов…"
+  },
+  "Search employees…": {
+    "hy": "Որոնել աշխատակիցներին…",
+    "en": "Search employees…",
+    "ru": "Поиск сотрудников…"
+  },
+  "Search products": {
+    "hy": "Որոնել ապրանքները",
+    "en": "Search products",
+    "ru": "Поиск товаров"
+  },
+  "Search title, model or code…": {
+    "hy": "Որոնել անվանում, մոդել կամ կոդ…",
+    "en": "Search title, model or code…",
+    "ru": "Поиск по названию, модели или коду…"
+  },
+  "Select no more than 100 requests.": {
+    "hy": "Ընտրեք առավելագույնը 100 հայտ։",
+    "en": "Select no more than 100 requests.",
+    "ru": "Выберите не более 100 заявок."
+  },
+  "Select request": {
+    "hy": "Ընտրել հայտը",
+    "en": "Select request",
+    "ru": "Выбрать заявку"
+  },
+  "Select this page": {
+    "hy": "Ընտրել այս էջը",
+    "en": "Select this page",
+    "ru": "Выбрать эту страницу"
+  },
+  "Selected": {
+    "hy": "ընտրված",
+    "en": "Selected",
+    "ru": "выбрано"
+  },
+  "Selected requests updated": {
+    "hy": "Ընտրված հայտերը թարմացված են",
+    "en": "Selected requests updated",
+    "ru": "Выбранные заявки обновлены"
+  },
+  "Service pricing": {
+    "hy": "Ծառայությունների գներ",
+    "en": "Service pricing",
+    "ru": "Стоимость услуг"
+  },
+  "Some selected requests have changed. Select them again.": {
+    "hy": "Ընտրված հայտերից մի քանիսը փոխվել են։ Կրկին ընտրեք դրանք։",
+    "en": "Some selected requests have changed. Select them again.",
+    "ru": "Некоторые выбранные заявки изменились. Выберите их заново."
+  },
+  "Some selected requests no longer exist. Refresh the list.": {
+    "hy": "Ընտրված հայտերից մի քանիսն այլևս գոյություն չունեն։ Թարմացրեք ցանկը։",
+    "en": "Some selected requests no longer exist. Refresh the list.",
+    "ru": "Некоторые выбранные заявки больше не существуют. Обновите список."
+  },
+  "Sort": {
+    "hy": "Դասավորում",
+    "en": "Sort",
+    "ru": "Сортировка"
+  },
+  "The latest activity from the website and office.": {
+    "hy": "Վերջին հայտերը՝ կայքից և օֆիսից։",
+    "en": "The latest activity from the website and office.",
+    "ru": "Последние заявки с сайта и из офиса."
+  },
+  "This product changed in another session. Reopen it before saving.": {
+    "hy": "Այս ապրանքը փոխվել է այլ սեսիայում։ Կրկին բացեք այն՝ պահպանելուց առաջ։",
+    "en": "This product changed in another session. Reopen it before saving.",
+    "ru": "Товар изменён в другой сессии. Откройте его заново перед сохранением."
+  },
+  "Today": {
+    "hy": "Այսօր",
+    "en": "Today",
+    "ru": "Сегодня"
+  },
+  "Track requests, deadlines and the catalog from one place.": {
+    "hy": "Հետևեք հայտերին, ժամկետներին և կատալոգին մեկ վայրից։",
+    "en": "Track requests, deadlines and the catalog from one place.",
+    "ru": "Следите за заявками, сроками и каталогом в одном месте."
+  },
+  "Unsaved changes": {
+    "hy": "Չպահպանված փոփոխություններ",
+    "en": "Unsaved changes",
+    "ru": "Несохранённые изменения"
+  },
+  "Updated": {
+    "hy": "Թարմացված է",
+    "en": "Updated",
+    "ru": "Обновлено"
+  },
+  "Use one unique specification name: value per line.": {
+    "hy": "Յուրաքանչյուր տողում գրեք եզակի բնութագրի անվանում: արժեք։",
+    "en": "Use one unique specification name: value per line.",
+    "ru": "В каждой строке укажите уникальное название характеристики: значение."
+  },
+  "Website management": {
+    "hy": "Կայքի կառավարում",
+    "en": "Website management",
+    "ru": "Управление сайтом"
+  },
+  "Workflow and follow-up": {
+    "hy": "Ընթացք և հետագա աշխատանք",
+    "en": "Workflow and follow-up",
+    "ru": "Процесс и дальнейшая работа"
+  },
+  "Your work at a glance": {
+    "hy": "Աշխատանքի ընդհանուր պատկերը",
+    "en": "Your work at a glance",
+    "ru": "Общая картина работы"
   }
 }

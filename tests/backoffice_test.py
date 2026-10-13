@@ -168,6 +168,28 @@ def main():
                 check('Unsafe custom request type rejected', request('/api/admin/lead', invalid, office_token, office)[0] == 400)
                 invalid = {**edit, 'revision': saved['office']['revision'], 'assignee': 'missing-user'}
                 check('Unknown assignee rejected', request('/api/admin/lead', invalid, office_token, office)[0] == 400)
+                deadline = {**edit, 'id':str(uuid.uuid4()), 'revision':0, 'name':'ԱՐԱՄ ԹԵՍՏ', 'subject':'ՊԱՀԵՍՏԱՄԱՍԻ ՍՊԱՍԱՐԿՈՒՄ', 'message':'Deadline customer request', 'status':'in_progress', 'source':'office', 'dueAt':'2001-01-01T10:00:00Z', 'note':''}
+                check('Deadline request created', request('/api/admin/lead', deadline, office_token, office)[0] == 201)
+                summary = get('/api/admin/dashboard', office)
+                check('Office overview has real counts and hides catalog administration', summary['urgent'] >= 1 and summary['overdue'] >= 1 and summary['active'] >= 1 and summary['catalog'] is None)
+                check('Admin overview has catalog readiness', get('/api/admin/dashboard')['catalog']['total'] == 10)
+                advanced = get('/api/admin/leads?q=Deadline&priority=urgent&source=office&assignee=' + assignee + '&due=overdue', office)
+                unicode_search = get('/api/admin/leads?q=' + urllib.parse.quote('արամ'), office)
+                check('Armenian name search is case insensitive', unicode_search['total'] == 1 and unicode_search['leads'][0]['lead']['id'] == deadline['id'])
+                check('Armenian subject search decodes stored JSON', get('/api/admin/leads?q=' + urllib.parse.quote('պահեստամասի'), office)['total'] == 1)
+                check('Advanced request filters combine', advanced['total'] == 1 and advanced['leads'][0]['lead']['id'] == deadline['id'])
+                check('Advanced request filters exclude mismatches', get('/api/admin/leads?q=Deadline&priority=low', office)['total'] == 0)
+                first = get('/api/admin/lead/' + edit['id'], office)
+                second = get('/api/admin/lead/' + deadline['id'], office)
+                batch = {'status':'waiting', 'revisions':{edit['id']:first['office']['revision'],deadline['id']:second['office']['revision']}}
+                check('Bulk status requires CSRF', request('/api/admin/leads/bulk-status', batch, client=office)[0] == 400)
+                stale = {**batch, 'revisions':{edit['id']:0,deadline['id']:second['office']['revision']}}
+                check('Stale bulk status rejected atomically', request('/api/admin/leads/bulk-status', stale, office_token, office)[0] == 409 and get('/api/admin/lead/' + deadline['id'], office)['lead']['status'] == 'in_progress')
+                check('Bulk status updates selected requests', request('/api/admin/leads/bulk-status', batch, office_token, office)[0] == 200 and get('/api/admin/lead/' + deadline['id'], office)['lead']['status'] == 'waiting')
+                check('Bulk status is recorded in history', get('/api/admin/lead/' + deadline['id'], office)['office']['history'][-1]['action'] == 'Bulk status update')
+                current_product = next(p for p in get('/api/admin')['products'] if p['slug'] == product['slug'])
+                check('Stale product update rejected', request('/api/admin', {'action':'product','product':product}, token)[0] == 409 and current_product['revision'] > product['revision'])
+
                 export = request('/api/admin/export?q=Office%20customer', client=office)
                 check('Office CSV export', export[0] == 200 and 'text/csv' in export[1]['Content-Type'] and 'Office customer' in export[2].decode())
                 # Exercise more than the old hard-coded 100-row limit using real requests.
@@ -183,6 +205,8 @@ def main():
                 check('Self administrator removal prevented', request('/api/admin/users', {**own, 'password': '', 'role': 'Office'}, token)[0] == 400)
                 anon = urllib.request.build_opener()
                 check('Anonymous office access blocked', request('/api/admin/leads', client=anon)[0] == 401)
+                check('Anonymous dashboard blocked', request('/api/admin/dashboard', client=anon)[0] == 401)
+                check('Anonymous bulk changes blocked', request('/api/admin/leads/bulk-status', {'status':'new','revisions':{}}, client=anon)[0] == 401)
                 check('Anonymous arrival feed blocked', request('/api/admin/arrivals', client=anon)[0] == 401)
                 check('Anonymous CMS access blocked', request('/api/admin/cms', client=anon)[0] == 401)
                 if os.environ.get('JERMIQ_BROWSER_TESTS') == '1':

@@ -8,7 +8,7 @@
   let cursor = null, timer, stopped = false, active = false, pendingRefresh = false, callbacks;
   let audio = null, enabled = false, preferred = false;
   try { preferred = localStorage.getItem('jermiq.arrivalSound') === 'on'; } catch { }
-  function status(text) { const message = t(text); if (connection.textContent !== message) connection.textContent = message; }
+  function status(text) { connection.parentElement?.classList.toggle('is-connected', text === 'Live updates connected'); const message = t(text); if (connection.textContent !== message) connection.textContent = message; }
   function soundLabel() {
     soundButton.textContent = t(enabled ? 'Mute sound' : preferred ? 'Activate sound' : 'Enable sound');
     soundButton.setAttribute('aria-pressed', String(enabled));
