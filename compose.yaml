@@ -1,0 +1,17 @@
+services:
+  jermiq:
+    build: .
+    ports:
+      - "127.0.0.1:8080:8080"
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      Persistence__DataDirectory: /data
+      Seo__BaseUrl: ${JERMIQ_BASE_URL:-http://localhost:8080}
+      Seo__IndexingEnabled: ${JERMIQ_INDEXING_ENABLED:-false}
+      Security__RequireHttps: ${JERMIQ_REQUIRE_HTTPS:-false}
+      Security__TrustedProxies__0: ${JERMIQ_PROXY_IP:-127.0.0.1}
+    volumes:
+      - jermiq-data:/data
+    restart: unless-stopped
+volumes:
+  jermiq-data:

@@ -1,0 +1,25 @@
+[Unit]
+Description=JERMIQ ASP.NET Core website
+After=network.target
+
+[Service]
+WorkingDirectory=/var/www/jermiq
+ExecStart=/usr/bin/dotnet /var/www/jermiq/Jermiq.Web.dll
+User=jermiq
+Group=jermiq
+Environment=ASPNETCORE_ENVIRONMENT=Production
+Environment=ASPNETCORE_URLS=http://127.0.0.1:5080
+Environment=Persistence__DataDirectory=/var/lib/jermiq
+Environment=Seo__BaseUrl=https://YOUR_DOMAIN
+Environment=Seo__IndexingEnabled=true
+Environment=AllowedHosts=YOUR_DOMAIN
+Environment=Security__RequireHttps=true
+Environment=Security__TrustedProxies__0=127.0.0.1
+Restart=always
+RestartSec=5
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,4 @@
+@page "/guide/{slug}"
+@model Jermiq.Web.Pages.Guide.ArticleModel
+@{ var article = Model.Article; }
+<div class="container pb-16"><partial name="_Heading" model="@((article.Title, (string?)article.Intro))" /><article class="prose">@foreach (var articleSection in article.Sections) { <section><h2>@articleSection[0]</h2><p>@articleSection[1]</p></section> }<div class="result-box"><h3>Հարց ունե՞ք ձեր սարքի մասին</h3><p>Ուղարկեք մոդելը կամ նկարագրեք ձեր կարիքը։</p><button type="button" class="btn mt-5" data-request="@(article.Slug == "find-spare-part" ? "part" : "question")">Խորհրդակցել մասնագետի հետ</button></div></article></div>

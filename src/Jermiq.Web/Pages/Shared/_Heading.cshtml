@@ -1,0 +1,3 @@
+@model (string Title, string? Description)
+<nav aria-label="Էջի ուղին" class="breadcrumbs"><a href="/">Գլխավոր</a><span>/</span><span>@Model.Title</span></nav>
+<div class="page-heading"><h1>@Model.Title</h1>@if (Model.Description is not null) { <p>@Model.Description</p> }</div>

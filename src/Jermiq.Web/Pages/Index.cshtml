@@ -1,0 +1,13 @@
+@page "/{pageName?}"
+@model SitePageModel
+@switch (Model.PageName)
+{
+    case "home": <partial name="_Home" model="Model" /> break;
+    case "catalog":
+    case "parts": <partial name="_Catalog" model="Model" /> break;
+    case "services": <partial name="_Services" model="Model" /> break;
+    case "warranty": <partial name="_Warranty" model="Model" /> break;
+    case "guide": <partial name="_Guide" model="Model" /> break;
+    case "contact": <partial name="_Contact" model="Model" /> break;
+    case "privacy": <partial name="_Privacy" model="Model" /> break;
+}

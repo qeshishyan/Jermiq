@@ -1,0 +1,11 @@
+**/bin/
+**/obj/
+**/node_modules/
+**/__pycache__/
+**/App_Data/
+**/.vs/
+publish/
+.env
+*.user
+*.suo
+test-results/

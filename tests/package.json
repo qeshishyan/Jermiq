@@ -1,0 +1,8 @@
+{
+  "name": "jermiq-optional-frontend-tests",
+  "private": true,
+  "type": "module",
+  "devDependencies": {
+    "jsdom": "30.1.2"
+  }
+}

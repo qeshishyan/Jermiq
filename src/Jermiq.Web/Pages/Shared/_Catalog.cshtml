@@ -1,0 +1,24 @@
+@model SitePageModel
+@{ var isPart = Model.PageName == "parts"; var products = Model.Products.Where(Model.Matches).ToList(); }
+<div class="container pb-16">
+<partial name="_Heading" model="@((Model.Title, (string?)Model.Description))" />
+@if (isPart)
+{
+<div class="part-help"><div><h2>Գտնենք ձեր սարքին համապատասխան մասը</h2><p>Ուղարկեք սարքի պիտակի կամ պահեստամասի լուսանկարը։ Կճշտենք մոդելը և համապատասխանությունը։</p><button type="button" class="btn" data-request="part">Ուղարկել մոդել կամ լուսանկար</button></div><img src="/images/parts.webp" alt="Տաքացնող տարր, անոդ, թերմոստատ, միջադիր և փական՝ պատկերային օրինակ" width="600" height="400" /></div>
+<div class="notice">Պահեստամասերի օրինակներ։ Համատեղելի մոդելների հաստատված ցանկը և գները կլրացվեն։</div>
+}
+else
+{ <div class="notice">@(Model.Query.Length > 0 ? "Որոնումը ներառում է նաև պահեստամասերը։" : "Տեսականու պատկերներն ու ապրանքները ցուցադրական օրինակներ են։ Իրական մոդելները, գներն ու առկայությունը կլրացվեն։")</div> }
+<div id="catalog" data-category="@Model.Category">
+<div class="filter-bar"><div class="search-box"><input id="catalog-query" value="@Model.Query" placeholder="@(isPart ? "Որոնել մաս, կոդ կամ մոդել…" : "Որոնել ապրանքը…")" aria-label="Որոնել կատալոգում" /><i data-icon="search"></i></div>
+@if (!isPart) { <select id="catalog-volume" class="field-select" aria-label="Տարողություն"><option value="all">Բոլոր ծավալները</option>@foreach (var volume in new[] { 30, 50, 80, 100 }) { <option value="@volume">@volume լ</option> }</select> }
+@{ var brands = Model.Products.Where(x => !x.Demo).Select(x => x.Brand).Where(x => x.Length > 0).Distinct(); }
+@if (brands.Any()) { <select id="catalog-brand" class="field-select" aria-label="Արտադրող"><option value="all">Բոլոր արտադրողները</option>@foreach (var brand in brands) { <option value="@brand">@brand</option> }</select> }
+<select id="catalog-sort" class="field-select" aria-label="Դասավորել"><option value="default">Դասավորել՝ սկզբնական</option><option value="title">Ըստ անվանման</option><option value="price">Գին՝ ցածրից բարձր</option></select></div>
+<p class="mb-5 text-sm" id="catalog-count" aria-live="polite">Գտնվել է @products.Count ապրանք</p>
+<div class="catalog-grid" id="catalog-grid">@foreach (var p in products) { <partial name="_ProductCard" model="p" /> }</div>
+<div class="empty-state" id="catalog-empty" hidden="@(products.Count > 0)"><i data-icon="package" class="icon-40"></i><h3>Այս տվյալներով ապրանք չի գտնվել</h3><p>Փոխեք որոնումը կամ ուղարկեք սարքի տվյալները, որպեսզի օգնենք գտնել համապատասխան տարբերակը։</p><div class="actions justify-center"><button type="button" class="btn btn-outline" data-action="catalog-reset">Մաքրել ֆիլտրերը</button><button type="button" class="btn" data-request="@(isPart ? "part" : "question")">Օգնեք գտնել</button></div></div>
+<script type="application/json" id="catalog-data">@Html.Raw(SiteJson.Serialize(Model.Products))</script>
+</div>
+@if (!isPart) { <div class="service-strip mt-10"><div><h3>Չգիտե՞ք՝ որ տարբերակն ընտրել</h3><p>Պատասխանեք երեք կարճ հարցի և ստացեք ընտրության ուղղություն։</p></div><button type="button" class="btn" data-action="chooser">Օգնեք ընտրել</button></div> }
+</div>
