@@ -75,5 +75,6 @@ public static class DatabaseInitializer
                 .Select((p, index) => new ProductRecord { Slug = p.Slug, Data = SiteJson.Serialize(p), UpdatedAt = timestamp + index }));
         }
         await db.SaveChangesAsync();
+        await UploadedCatalogImport.ApplyAsync(db, environment, scope.ServiceProvider.GetRequiredService<FileStorage>());
     }
 }

@@ -12,7 +12,7 @@ else
 <div id="catalog" data-category="@Model.Category">
 <div class="filter-bar"><div class="search-box"><input id="catalog-query" value="@Model.Query" placeholder="@(isPart ? L["Որոնել մաս, կոդ կամ մոդել…"] : L["Որոնել ապրանքը…"])" aria-label="@L["Որոնել կատալոգում"]" /><i data-icon="search"></i></div>
 @if (!isPart) { <select id="catalog-volume" class="field-select" aria-label="@L["Տարողություն"]"><option value="all">@L["Բոլոր ծավալները"]</option>@foreach (var volume in new[] { 30, 50, 80, 100 }) { <option value="@volume">@volume @L["լ"]</option> }</select> }
-@{ var brands = Model.Products.Where(x => !x.Demo).Select(x => x.Brand).Where(x => x.Length > 0).Distinct(); }
+@{ var brands = Model.Products.Where(x => x.Category == (isPart ? "part" : "heater")).Select(x => x.Brand).Where(x => x.Length > 0).Distinct(); }
 @if (brands.Any()) { <select id="catalog-brand" class="field-select" aria-label="@L["Արտադրող"]"><option value="all">@L["Բոլոր արտադրողները"]</option>@foreach (var brand in brands) { <option value="@brand">@brand</option> }</select> }
 <select id="catalog-sort" class="field-select" aria-label="@L["Դասավորել"]"><option value="default">@L["Դասավորել՝ սկզբնական"]</option><option value="title">@L["Ըստ անվանման"]</option><option value="price">@L["Գին՝ ցածրից բարձր"]</option></select></div>
 <p class="mb-5 text-sm" id="catalog-count" aria-live="polite">@L["Գտնվել է"] @products.Count @L["ապրանք"]</p>

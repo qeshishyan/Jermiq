@@ -105,7 +105,7 @@ def main():
                     check('SEO metadata ' + (path or '/'), '<link rel="canonical"' in text and 'og:title' in text and 'lang="hy"' in text)
                 status, _, body = request('/api/catalog')
                 products = json.loads(body)['products']
-                check('Migrated 10 catalog products', status == 200 and len(products) == 10)
+                check('Original catalog and 35 uploaded parts imported', status == 200 and len(products) == 45)
                 for product in products:
                     status, _, body = request('/products/' + product['slug'])
                     check('SSR product ' + product['slug'], status == 200 and product['title'] in html.unescape(body.decode()))

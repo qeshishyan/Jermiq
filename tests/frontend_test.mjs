@@ -103,16 +103,19 @@ check('Failed request retains form values', brokenForm.elements.name.value === '
 w.close();
 
 dom = await page('/admin', true); w = dom.window; d = w.document;
-await waitUntil(() => d.querySelectorAll('[data-edit-product]').length === 10);
-check('Administrator UI loads the catalog', d.querySelectorAll('[data-edit-product]').length === 10);
+const expectedProducts = (await (await w.fetch('/api/admin')).json()).products.length;
+await waitUntil(() => d.querySelector('#product-count').textContent.includes(`${expectedProducts} / ${expectedProducts}`));
+check('Administrator UI loads the paginated catalog', d.querySelectorAll('[data-edit-product]').length === Math.min(12, expectedProducts));
 click('[data-tab="products"]');
 check('Products tab is visible', !d.querySelector('#panel-products').hidden && d.querySelector('#panel-leads').hidden);
 click('#product-new');
 check('New product form initializes a new slug', d.querySelector('#product-form').elements.slug.value.startsWith('new-'));
 const productForm = d.querySelector('#product-form'); productForm.elements.title.value = 'Frontend Added Product';
 productForm.dispatchEvent(new w.Event('submit', { bubbles: true, cancelable: true }));
-await waitUntil(() => d.querySelectorAll('[data-edit-product]').length === 11);
-check('Administrator UI saves a new product to the real API', d.querySelector('#product-list').textContent.includes('Frontend Added Product'));
+await waitUntil(() => !d.querySelector('#admin-refresh').disabled && d.querySelector('#admin-notice').textContent === 'Պահպանված է');
+const productSearch = d.querySelector('#product-search'); productSearch.value = 'Frontend Added Product';
+productSearch.dispatchEvent(new w.Event('input', { bubbles: true }));
+check('Administrator UI saves a new product to the real API', d.querySelectorAll('[data-edit-product]').length === 1 && d.querySelector('#product-list').textContent.includes('Frontend Added Product') && (await (await w.fetch('/api/admin')).json()).products.length === expectedProducts + 1);
 click('[data-tab="settings"]');
 check('Settings tab is visible', !d.querySelector('#panel-settings').hidden);
 const settingsForm = d.querySelector('#settings-form'); settingsForm.elements.hours.value = 'Frontend QA hours';

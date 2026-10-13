@@ -3118,5 +3118,220 @@
     "hy": "Աշխատանքի ընդհանուր պատկերը",
     "en": "Your work at a glance",
     "ru": "Общая картина работы"
+  },
+  "Գինն ու առկայությունը չեն հաստատվել": {
+    "hy": "Գինն ու առկայությունը չեն հաստատվել",
+    "en": "Price and availability have not been confirmed",
+    "ru": "Цена и наличие не подтверждены"
+  },
+  "Thermex — Մագնեզիումային անոդ 900 017": {
+    "hy": "Thermex — Մագնեզիումային անոդ 900 017",
+    "en": "Thermex — Magnesium anode 900 017",
+    "ru": "Thermex — Магниевый анод 900 017"
+  },
+  "Բաքի հակակոռոզիոն պաշտպանություն. Նախնական կատալոգային գրառում․ կոդը, բնութագրերը և համատեղելիությունը հաստատված չեն։ Նկարը նկարազարդում է, ոչ OEM լուսանկար։": {
+    "hy": "Բաքի հակակոռոզիոն պաշտպանություն. Նախնական կատալոգային գրառում․ կոդը, բնութագրերը և համատեղելիությունը հաստատված չեն։ Նկարը նկարազարդում է, ոչ OEM լուսանկար։",
+    "en": "Tank corrosion protection. Preliminary catalog entry: the code, specifications and compatibility have not been confirmed. The image is an illustration, not an OEM photograph.",
+    "ru": "Защита бака от коррозии. Предварительная запись каталога: код, характеристики и совместимость не подтверждены. Изображение — иллюстрация, а не фотография OEM."
+  },
+  "Thermex — Մագնեզիումային անոդ 900 019": {
+    "hy": "Thermex — Մագնեզիումային անոդ 900 019",
+    "en": "Thermex — Magnesium anode 900 019",
+    "ru": "Thermex — Магниевый анод 900 019"
+  },
+  "Thermex — Մագնեզիումային անոդ 900 020": {
+    "hy": "Thermex — Մագնեզիումային անոդ 900 020",
+    "en": "Thermex — Magnesium anode 900 020",
+    "ru": "Thermex — Магниевый анод 900 020"
+  },
+  "Thermex — Մագնեզիումային անոդ 900 022": {
+    "hy": "Thermex — Մագնեզիումային անոդ 900 022",
+    "en": "Thermex — Magnesium anode 900 022",
+    "ru": "Thermex — Магниевый анод 900 022"
+  },
+  "Thermex — Մագնեզիումային անոդ 900 138": {
+    "hy": "Thermex — Մագնեզիումային անոդ 900 138",
+    "en": "Thermex — Magnesium anode 900 138",
+    "ru": "Thermex — Магниевый анод 900 138"
+  },
+  "Ariston — Տաքացնող տարր՝ ՏԷՆ": {
+    "hy": "Ariston — Տաքացնող տարր՝ ՏԷՆ",
+    "en": "Ariston — Heating element",
+    "ru": "Ariston — Нагревательный элемент (ТЭН)"
+  },
+  "Ջուրը տաքացնող էլեկտրական տարր. Նախնական կատալոգային գրառում․ կոդը, բնութագրերը և համատեղելիությունը հաստատված չեն։ Նկարը նկարազարդում է, ոչ OEM լուսանկար։": {
+    "hy": "Ջուրը տաքացնող էլեկտրական տարր. Նախնական կատալոգային գրառում․ կոդը, բնութագրերը և համատեղելիությունը հաստատված չեն։ Նկարը նկարազարդում է, ոչ OEM լուսանկար։",
+    "en": "Electric element for heating water. Preliminary catalog entry: the code, specifications and compatibility have not been confirmed. The image is an illustration, not an OEM photograph.",
+    "ru": "Электрический элемент для нагрева воды. Предварительная запись каталога: код, характеристики и совместимость не подтверждены. Изображение — иллюстрация, а не фотография OEM."
+  },
+  "Ariston — Թերմոստատ": {
+    "hy": "Ariston — Թերմոստատ",
+    "en": "Ariston — Thermostat",
+    "ru": "Ariston — Термостат"
+  },
+  "Կառավարում է ջրի տաքացման ջերմաստիճանը. Նախնական կատալոգային գրառում․ կոդը, բնութագրերը և համատեղելիությունը հաստատված չեն։ Նկարը նկարազարդում է, ոչ OEM լուսանկար։": {
+    "hy": "Կառավարում է ջրի տաքացման ջերմաստիճանը. Նախնական կատալոգային գրառում․ կոդը, բնութագրերը և համատեղելիությունը հաստատված չեն։ Նկարը նկարազարդում է, ոչ OEM լուսանկար։",
+    "en": "Controls the water heating temperature. Preliminary catalog entry: the code, specifications and compatibility have not been confirmed. The image is an illustration, not an OEM photograph.",
+    "ru": "Регулирует температуру нагрева воды. Предварительная запись каталога: код, характеристики и совместимость не подтверждены. Изображение — иллюстрация, а не фотография OEM."
+  },
+  "Ariston — Մագնեզիումային անոդ": {
+    "hy": "Ariston — Մագնեզիումային անոդ",
+    "en": "Ariston — Magnesium anode",
+    "ru": "Ariston — Магниевый анод"
+  },
+  "Պաշտպանում է բաքը կոռոզիայից. Նախնական կատալոգային գրառում․ կոդը, բնութագրերը և համատեղելիությունը հաստատված չեն։ Նկարը նկարազարդում է, ոչ OEM լուսանկար։": {
+    "hy": "Պաշտպանում է բաքը կոռոզիայից. Նախնական կատալոգային գրառում․ կոդը, բնութագրերը և համատեղելիությունը հաստատված չեն։ Նկարը նկարազարդում է, ոչ OEM լուսանկար։",
+    "en": "Protects the tank from corrosion. Preliminary catalog entry: the code, specifications and compatibility have not been confirmed. The image is an illustration, not an OEM photograph.",
+    "ru": "Защищает бак от коррозии. Предварительная запись каталога: код, характеристики и совместимость не подтверждены. Изображение — иллюстрация, а не фотография OEM."
+  },
+  "Ariston — Ֆլանցի միջադիր": {
+    "hy": "Ariston — Ֆլանցի միջադիր",
+    "en": "Ariston — Flange gasket",
+    "ru": "Ariston — Прокладка фланца"
+  },
+  "Ապահովում է տաքացնող հանգույցի հերմետիկությունը. Նախնական կատալոգային գրառում․ կոդը, բնութագրերը և համատեղելիությունը հաստատված չեն։ Նկարը նկարազարդում է, ոչ OEM լուսանկար։": {
+    "hy": "Ապահովում է տաքացնող հանգույցի հերմետիկությունը. Նախնական կատալոգային գրառում․ կոդը, բնութագրերը և համատեղելիությունը հաստատված չեն։ Նկարը նկարազարդում է, ոչ OEM լուսանկար։",
+    "en": "Seals the heating assembly. Preliminary catalog entry: the code, specifications and compatibility have not been confirmed. The image is an illustration, not an OEM photograph.",
+    "ru": "Обеспечивает герметичность нагревательного узла. Предварительная запись каталога: код, характеристики и совместимость не подтверждены. Изображение — иллюстрация, а не фотография OEM."
+  },
+  "Ariston — Անվտանգության փական": {
+    "hy": "Ariston — Անվտանգության փական",
+    "en": "Ariston — Safety valve",
+    "ru": "Ariston — Предохранительный клапан"
+  },
+  "Պաշտպանում է համակարգը ավելորդ ճնշումից. Նախնական կատալոգային գրառում․ կոդը, բնութագրերը և համատեղելիությունը հաստատված չեն։ Նկարը նկարազարդում է, ոչ OEM լուսանկար։": {
+    "hy": "Պաշտպանում է համակարգը ավելորդ ճնշումից. Նախնական կատալոգային գրառում․ կոդը, բնութագրերը և համատեղելիությունը հաստատված չեն։ Նկարը նկարազարդում է, ոչ OEM լուսանկար։",
+    "en": "Protects the system from excessive pressure. Preliminary catalog entry: the code, specifications and compatibility have not been confirmed. The image is an illustration, not an OEM photograph.",
+    "ru": "Защищает систему от избыточного давления. Предварительная запись каталога: код, характеристики и совместимость не подтверждены. Изображение — иллюстрация, а не фотография OEM."
+  },
+  "Ariston — Կառավարման պլատա": {
+    "hy": "Ariston — Կառավարման պլատա",
+    "en": "Ariston — Control board",
+    "ru": "Ariston — Плата управления"
+  },
+  "Էլեկտրոնային կառավարում՝ միայն համապատասխան մոդելներում. Նախնական կատալոգային գրառում․ կոդը, բնութագրերը և համատեղելիությունը հաստատված չեն։ Նկարը նկարազարդում է, ոչ OEM լուսանկար։": {
+    "hy": "Էլեկտրոնային կառավարում՝ միայն համապատասխան մոդելներում. Նախնական կատալոգային գրառում․ կոդը, բնութագրերը և համատեղելիությունը հաստատված չեն։ Նկարը նկարազարդում է, ոչ OEM լուսանկար։",
+    "en": "Electronic control for compatible models only. Preliminary catalog entry: the code, specifications and compatibility have not been confirmed. The image is an illustration, not an OEM photograph.",
+    "ru": "Электронное управление только для совместимых моделей. Предварительная запись каталога: код, характеристики и совместимость не подтверждены. Изображение — иллюстрация, а не фотография OEM."
+  },
+  "Thermex — Տաքացնող տարր՝ ՏԷՆ": {
+    "hy": "Thermex — Տաքացնող տարր՝ ՏԷՆ",
+    "en": "Thermex — Heating element",
+    "ru": "Thermex — Нагревательный элемент (ТЭН)"
+  },
+  "Thermex — Թերմոստատ": {
+    "hy": "Thermex — Թերմոստատ",
+    "en": "Thermex — Thermostat",
+    "ru": "Thermex — Термостат"
+  },
+  "Thermex — Մագնեզիումային անոդ": {
+    "hy": "Thermex — Մագնեզիումային անոդ",
+    "en": "Thermex — Magnesium anode",
+    "ru": "Thermex — Магниевый анод"
+  },
+  "Thermex — Ֆլանցի միջադիր": {
+    "hy": "Thermex — Ֆլանցի միջադիր",
+    "en": "Thermex — Flange gasket",
+    "ru": "Thermex — Прокладка фланца"
+  },
+  "Thermex — Անվտանգության փական": {
+    "hy": "Thermex — Անվտանգության փական",
+    "en": "Thermex — Safety valve",
+    "ru": "Thermex — Предохранительный клапан"
+  },
+  "Thermex — Կառավարման պլատա": {
+    "hy": "Thermex — Կառավարման պլատա",
+    "en": "Thermex — Control board",
+    "ru": "Thermex — Плата управления"
+  },
+  "Electrolux — Տաքացնող տարր՝ ՏԷՆ": {
+    "hy": "Electrolux — Տաքացնող տարր՝ ՏԷՆ",
+    "en": "Electrolux — Heating element",
+    "ru": "Electrolux — Нагревательный элемент (ТЭН)"
+  },
+  "Electrolux — Թերմոստատ": {
+    "hy": "Electrolux — Թերմոստատ",
+    "en": "Electrolux — Thermostat",
+    "ru": "Electrolux — Термостат"
+  },
+  "Electrolux — Մագնեզիումային անոդ": {
+    "hy": "Electrolux — Մագնեզիումային անոդ",
+    "en": "Electrolux — Magnesium anode",
+    "ru": "Electrolux — Магниевый анод"
+  },
+  "Electrolux — Ֆլանցի միջադիր": {
+    "hy": "Electrolux — Ֆլանցի միջադիր",
+    "en": "Electrolux — Flange gasket",
+    "ru": "Electrolux — Прокладка фланца"
+  },
+  "Electrolux — Անվտանգության փական": {
+    "hy": "Electrolux — Անվտանգության փական",
+    "en": "Electrolux — Safety valve",
+    "ru": "Electrolux — Предохранительный клапан"
+  },
+  "Electrolux — Կառավարման պլատա": {
+    "hy": "Electrolux — Կառավարման պլատա",
+    "en": "Electrolux — Control board",
+    "ru": "Electrolux — Плата управления"
+  },
+  "Shivaki — Տաքացնող տարր՝ ՏԷՆ": {
+    "hy": "Shivaki — Տաքացնող տարր՝ ՏԷՆ",
+    "en": "Shivaki — Heating element",
+    "ru": "Shivaki — Нагревательный элемент (ТЭН)"
+  },
+  "Shivaki — Թերմոստատ": {
+    "hy": "Shivaki — Թերմոստատ",
+    "en": "Shivaki — Thermostat",
+    "ru": "Shivaki — Термостат"
+  },
+  "Shivaki — Մագնեզիումային անոդ": {
+    "hy": "Shivaki — Մագնեզիումային անոդ",
+    "en": "Shivaki — Magnesium anode",
+    "ru": "Shivaki — Магниевый анод"
+  },
+  "Shivaki — Ֆլանցի միջադիր": {
+    "hy": "Shivaki — Ֆլանցի միջադիր",
+    "en": "Shivaki — Flange gasket",
+    "ru": "Shivaki — Прокладка фланца"
+  },
+  "Shivaki — Անվտանգության փական": {
+    "hy": "Shivaki — Անվտանգության փական",
+    "en": "Shivaki — Safety valve",
+    "ru": "Shivaki — Предохранительный клапан"
+  },
+  "Shivaki — Կառավարման պլատա": {
+    "hy": "Shivaki — Կառավարման պլատա",
+    "en": "Shivaki — Control board",
+    "ru": "Shivaki — Плата управления"
+  },
+  "Ballu — Տաքացնող տարր՝ ՏԷՆ": {
+    "hy": "Ballu — Տաքացնող տարր՝ ՏԷՆ",
+    "en": "Ballu — Heating element",
+    "ru": "Ballu — Нагревательный элемент (ТЭН)"
+  },
+  "Ballu — Թերմոստատ": {
+    "hy": "Ballu — Թերմոստատ",
+    "en": "Ballu — Thermostat",
+    "ru": "Ballu — Термостат"
+  },
+  "Ballu — Մագնեզիումային անոդ": {
+    "hy": "Ballu — Մագնեզիումային անոդ",
+    "en": "Ballu — Magnesium anode",
+    "ru": "Ballu — Магниевый анод"
+  },
+  "Ballu — Ֆլանցի միջադիր": {
+    "hy": "Ballu — Ֆլանցի միջադիր",
+    "en": "Ballu — Flange gasket",
+    "ru": "Ballu — Прокладка фланца"
+  },
+  "Ballu — Անվտանգության փական": {
+    "hy": "Ballu — Անվտանգության փական",
+    "en": "Ballu — Safety valve",
+    "ru": "Ballu — Предохранительный клапан"
+  },
+  "Ballu — Կառավարման պլատա": {
+    "hy": "Ballu — Կառավարման պլատա",
+    "en": "Ballu — Control board",
+    "ru": "Ballu — Плата управления"
   }
 }
