@@ -33,7 +33,7 @@ public sealed class SiteSettings
     [StringLength(5000)] public string Warranty { get; set; } = "";
     [StringLength(3000)] public string Delivery { get; set; } = "";
     public Dictionary<string, string> ServicePrices { get; set; } = [];
-    public bool ShowDraftBanner { get; set; } = true;
+    public bool ShowDraftBanner { get; set; } = false;
 }
 
 public sealed record ServiceInfo(string Id, string Title, string Desc);

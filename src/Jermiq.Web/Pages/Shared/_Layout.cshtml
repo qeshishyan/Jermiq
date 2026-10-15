@@ -52,7 +52,7 @@
     <div class="container header-main">
         <partial name="_Brand" />
         <form class="search-box" action="/catalog" method="get"><input type="hidden" name="lang" value="@L.Language" /><input name="q" aria-label="@L["Որոնել ապրանք կամ պահեստամաս"]" placeholder="@L["Որոնել ապրանք, մոդել կամ պահեստամաս…"]" /><button aria-label="@L["Որոնել"]" type="submit"><i data-icon="search"></i></button></form>
-        <div class="header-actions"><partial name="_LanguageSwitch" /><button type="button" class="text-link desktop-contact" data-request="callback">@L["Զանգահարեք ինձ"]</button><button class="icon-btn" type="button" data-action="cart" aria-label="@L["Պատվերի ցանկ"]"><i data-icon="bag"></i><span class="count" id="cart-count" hidden></span></button><button class="icon-btn mobile-menu" type="button" id="menu-toggle" aria-expanded="false" aria-controls="main-nav" aria-label="@L["Բացել մենյուն"]"><i data-icon="menu"></i></button></div>
+        <div class="header-actions"><partial name="_LanguageSwitch" /><button type="button" class="callback-button desktop-contact" data-request="callback"><span class="callback-icon"><i data-icon="phone"></i></span><span>@L["Պատվիրել հետադարձ զանգ"]</span><span class="callback-arrow" aria-hidden="true">↗</span></button><button class="icon-btn" type="button" data-action="cart" aria-label="@L["Պատվերի ցանկ"]"><i data-icon="bag"></i><span class="count" id="cart-count" hidden></span></button><button class="icon-btn mobile-menu" type="button" id="menu-toggle" aria-expanded="false" aria-controls="main-nav" aria-label="@L["Բացել մենյուն"]"><i data-icon="menu"></i></button></div>
     </div>
     <nav id="main-nav" aria-label="@L["Հիմնական մենյու"]" class="container nav">
         @foreach (var item in new[] { ("/catalog", L["Ջրատաքացուցիչներ"]), ("/parts", L["Պահեստամասեր"]), ("/services", L["Սպասարկում"]), ("/warranty", L["Երաշխիք"]), ("/guide", L["Օգտակար նյութեր"]), ("/contact", L["Կապ"]) })
@@ -60,7 +60,7 @@
         <button type="button" class="nav-service plain-button" data-request="service"><i data-icon="wrench"></i>@L["Դիմել մասնագետին"]</button>
     </nav>
 </header>
-@if (settings.ShowDraftBanner) { <div class="demo-bar">@L["Նախնական տարբերակ · Տեսականին և պայմանները լրացվում են"]</div> }
+
 <main id="main">@RenderBody()</main>
 <footer class="footer"><div class="container"><div class="footer-grid"><div><partial name="_Brand" /><p>@L["Տաք ջրի հարցերով՝ ընտրությունից մինչև սպասարկում։ Օգնում ենք ընտրել սարքը, գտնել պահեստամասը և պահպանել սարքի աշխատանքը։"]</p></div><div><h3>@L["Տեսականի և ծառայություններ"]</h3><div class="footer-links"><a href="/catalog">@L["Ջրատաքացուցիչներ"]</a><a href="/parts">@L["Պահեստամասեր"]</a><a href="/services">@L["Վերանորոգում և սպասարկում"]</a><a href="/warranty">@L["Երաշխիքային պայմաններ"]</a></div></div><div><h3>@L["Կապ մեզ հետ"]</h3><div class="footer-links">
     @if (settings.Phone.Length > 0) { <a href="tel:@System.Text.RegularExpressions.Regex.Replace(settings.Phone, "[^+0-9]", "")">@settings.Phone</a> }

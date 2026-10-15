@@ -1,7 +1,7 @@
 @model SitePageModel
 @{ var s = Model.Settings; }
 <div class="container pb-16"><partial name="_Heading" model="@((Model.Title, (string?)Model.Description))" /><div class="contact-grid"><aside class="contact-card">
-<div><h3>@L["Հեռախոս"]</h3>@if (s.Phone.Length > 0) { <a href="tel:@System.Text.RegularExpressions.Regex.Replace(s.Phone, "[^+0-9]", "")">@s.Phone</a> } else { <p>@L["Համարը՝ լրացման փուլում"]</p> }</div>
-<div><h3>@L["Էլ․ փոստ"]</h3>@if (s.Email.Length > 0) { <a href="mailto:@s.Email">@s.Email</a> } else { <p>@L["Հասցեն՝ լրացման փուլում"]</p> }</div>
-<div><h3>@L["Սպասարկման տարածք / հասցե"]</h3><p>@(s.Address.Length > 0 ? s.Address : L["Տարածքն ու հասցեն՝ լրացման փուլում"])</p></div><div><h3>@L["Աշխատանքային ժամեր"]</h3><p>@(s.Hours.Length > 0 ? s.Hours : L["Ժամերը՝ լրացման փուլում"])</p></div><button type="button" class="btn btn-outline" data-request="callback">@L["Զանգահարեք ինձ"]</button>
+<div><h3>@L["Հեռախոս"]</h3>@if (s.Phone.Length > 0) { <a href="tel:@System.Text.RegularExpressions.Regex.Replace(s.Phone, "[^+0-9]", "")">@s.Phone</a> } else { <p>@L["Հետադարձ զանգի համար ուղարկեք հայտ։"]</p> }</div>
+<div><h3>@L["Էլ․ փոստ"]</h3>@if (s.Email.Length > 0) { <a href="mailto:@s.Email">@s.Email</a> } else { <p>@L["Գրեք մեզ կապի ձևով։"]</p> }</div>
+<div><h3>@L["Սպասարկման տարածք / հասցե"]</h3><p>@(s.Address.Length > 0 ? s.Address : L["Սպասարկման հասցեն համաձայնեցնում ենք հայտը ստանալուց հետո։"])</p></div><div><h3>@L["Աշխատանքային ժամեր"]</h3><p>@(s.Hours.Length > 0 ? s.Hours : L["Կապի հարմար ժամը նշեք հայտում։"])</p></div><button type="button" class="btn callback-button" data-request="callback"><span class="callback-icon"><i data-icon="phone"></i></span><span>@L["Պատվիրել հետադարձ զանգ"]</span><span class="callback-arrow" aria-hidden="true">↗</span></button>
 </aside><div class="admin-card"><h2 class="mb-5">@L["Գրեք ձեր հարցը"]</h2><partial name="_RequestForm" model="@(new RequestSpec("question"))" /></div></div></div>

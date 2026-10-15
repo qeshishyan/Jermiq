@@ -1,7 +1,7 @@
 @model Product
 <article class="product" data-product="@SiteJson.Serialize(Model)">
     <a href="/products/@Model.Slug" class="product-img"><img src="@Model.Image" alt="@(Model.Demo ? L["Տեսականու պատկերային օրինակ"] : Model.Title)" width="460" height="300" loading="lazy" />@if (Model.Volume is not null) { <span class="product-volume">@Model.Volume @L["լ"]</span> }</a>
-    <div class="product-copy"><div class="meta">@(Model.Demo ? L["Ցուցադրական օրինակ"] : Model.Brand)</div><a href="/products/@Model.Slug"><h3>@Model.Title</h3></a><div class="price">@(Model.Price is null ? L["Գինը՝ շուտով"] : Model.Price.Value.ToString("N0") + " ֏")</div><div class="stock">@Model.Availability</div>
+    <div class="product-copy"><div class="meta">@(Model.Demo ? (Model.Category == "heater" ? L["Ջրատաքացուցիչ"] : L["Պահեստամաս"]) : Model.Brand)</div><a href="/products/@Model.Slug"><h3>@Model.Title</h3></a><div class="price">@(Model.Price is null ? L["Հարցնել գինը"] : Model.Price.Value.ToString("N0") + " ֏")</div><div class="stock">@Model.Availability</div>
         <button type="button" class="btn" data-action="add-cart"><i data-icon="bag"></i>@(Model.Price is null ? L["Հարցնել գինը"] : L["Ավելացնել պատվերին"])</button><button type="button" class="compare-button" data-action="compare-toggle" aria-pressed="false"><i data-icon="scale"></i><span>@L["Համեմատել"]</span></button>
     </div>
 </article>

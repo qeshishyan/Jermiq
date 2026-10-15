@@ -39,6 +39,11 @@ public sealed class CatalogService(AppDbContext db, ContentLocalizer localizer)
     private Product Localize(Product p, bool localized)
     {
         if (!localized) return p;
+        // Hide retired setup copy from existing catalogs without changing stored product data.
+        if (p.Brand == "Արտադրողը՝ լրացման փուլում") p.Brand = "";
+        if (p.Model == "Մոդելը՝ լրացման փուլում") p.Model = "";
+        p.Description = p.Description.Replace(" Իրական արտադրողը, մոդելը, չափերը և տեխնիկական տվյալները կլրացվեն հաստատված տեսականու հիման վրա։", "");
+        p.Specs = p.Specs.Where(x => x.Value != "Կլրացվի").ToDictionary(x => x.Key, x => x.Value);
         p.Title = localizer[p.Title]; p.Description = localizer[p.Description]; p.Availability = localizer[p.Availability];
         if (p.Brand == "Արտադրողը՝ լրացման փուլում") p.Brand = localizer[p.Brand];
         if (p.Model is "Մոդելը՝ լրացման փուլում" or "Համատեղելիությունը ճշտվում է") p.Model = localizer[p.Model];

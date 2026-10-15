@@ -5,10 +5,10 @@
 @if (isPart)
 {
 <div class="part-help"><div><h2>@L["Գտնենք ձեր սարքին համապատասխան մասը"]</h2><p>@L["Ուղարկեք սարքի պիտակի կամ պահեստամասի լուսանկարը։ Կճշտենք մոդելը և համապատասխանությունը։"]</p><button type="button" class="btn" data-request="part">@L["Ուղարկել մոդել կամ լուսանկար"]</button></div><img src="/images/parts.webp" alt="@L["Տաքացնող տարր, անոդ, թերմոստատ, միջադիր և փական՝ պատկերային օրինակ"]" width="600" height="400" /></div>
-<div class="notice">@L["Պահեստամասերի օրինակներ։ Համատեղելի մոդելների հաստատված ցանկը և գները կլրացվեն։"]</div>
+
 }
-else
-{ <div class="notice">@(Model.Query.Length > 0 ? L["Որոնումը ներառում է նաև պահեստամասերը։"] : L["Տեսականու պատկերներն ու ապրանքները ցուցադրական օրինակներ են։ Իրական մոդելները, գներն ու առկայությունը կլրացվեն։"])</div> }
+else if (Model.Query.Length > 0)
+{ <p class="text-sm mb-4">@L["Որոնումը ներառում է նաև պահեստամասերը։"]</p> }
 <div id="catalog" data-category="@(isPart ? "part" : "heater")">
 <div class="filter-bar"><div class="search-box"><input id="catalog-query" maxlength="200" type="search" aria-describedby="search-help" list="catalog-suggestions" value="@Model.Query" placeholder="@(isPart ? L["Որոնել մաս, կոդ կամ մոդել…"] : L["Որոնել ապրանքը…"])" aria-label="@L["Որոնել կատալոգում"]" /><i data-icon="search"></i></div>
 @if (!isPart) { <select id="catalog-volume" class="field-select" aria-label="@L["Տարողություն"]"><option value="all">@L["Բոլոր ծավալները"]</option>@foreach (var volume in new[] { 30, 50, 80, 100 }) { <option value="@volume">@volume @L["լ"]</option> }</select> }
