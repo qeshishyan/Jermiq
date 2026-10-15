@@ -58,7 +58,7 @@ with tempfile.TemporaryDirectory(prefix='jermiq-catalog-import-') as temp:
     try:
         products = catalog()
         imported = [p for p in products if p['slug'] in {p['slug'] for p in bundle}]
-        check(len(products) == 45 and len(imported) == 35, 'Fresh database has original 10 and uploaded 35')
+        check(len(products) == 55 and len(imported) == 35, 'Fresh database has original 10, uploaded 35 and real 10')
         check({p['brand'] for p in imported} == {'Thermex', 'Ariston', 'Electrolux', 'Shivaki', 'Ballu'}, 'All five uploaded brands')
         check(all(p['demo'] and p['price'] is None for p in imported), 'Unverified entries stay illustrative and unpriced')
         for product in imported:
@@ -90,7 +90,7 @@ with tempfile.TemporaryDirectory(prefix='jermiq-catalog-import-') as temp:
     process, log = start()
     try:
         products = catalog()
-        check(len(products) == 45, 'Existing catalog imported without duplicates')
+        check(len(products) == 55, 'Existing catalog imported without duplicates')
         check(not any(p['slug'] == bundle[0]['slug'] for p in products), 'Existing brand/SKU alias matched')
         check(next(p for p in products if p['slug'] == preserved['slug'])['price'] == 23456, 'Existing product price preserved')
         with sqlite3.connect(database) as db:
@@ -103,6 +103,11 @@ with tempfile.TemporaryDirectory(prefix='jermiq-catalog-import-') as temp:
 
     with sqlite3.connect(database) as db:
         db.execute('DELETE FROM Products WHERE Slug = ?', (bundle[1]['slug'],))
+        real_edit = json.loads(db.execute('SELECT Data FROM Products WHERE Slug = ?', ('ariston-blu1-r-50-v',)).fetchone()[0])
+        real_edit['price'] = 99999
+        real_edit['priceIsEstimate'] = False
+        db.execute('UPDATE Products SET Data = ? WHERE Slug = ?', (json.dumps(real_edit), real_edit['slug']))
+        db.execute('DELETE FROM Products WHERE Slug = ?', ('thermex-part-904669',))
         changed = dict(bundle[2], title='Administrator revision after import', price=34567)
         db.execute('UPDATE Products SET Data = ?, UpdatedAt = ? WHERE Slug = ?', (json.dumps(changed), 234567, changed['slug']))
     # Copying just the database to another server must restore bundled images.
@@ -111,9 +116,12 @@ with tempfile.TemporaryDirectory(prefix='jermiq-catalog-import-') as temp:
     process, log = start()
     try:
         products = catalog()
-        check(len(products) == 44 and not any(p['slug'] == bundle[1]['slug'] for p in products), 'Restart never resurrects a deleted entry')
+        check(len(products) == 53 and not any(p['slug'] == bundle[1]['slug'] for p in products), 'Restart never resurrects a deleted entry')
         check(next(p for p in products if p['slug'] == changed['slug'])['price'] == 34567, 'Restart preserves administrator edits')
         check(image.exists(), 'Missing bundled image restored')
+        check(not any(p['slug'] == 'thermex-part-904669' for p in products), 'Real import does not resurrect deleted products')
+        edited_real = next(p for p in products if p['slug'] == real_edit['slug'])
+        check(edited_real['price'] == 99999 and not edited_real['priceIsEstimate'], 'Real import preserves finalized administrator prices')
     finally:
         stop(process, log)
 

@@ -246,7 +246,7 @@
     ['slug', 'title', 'category', 'brand', 'model', 'availability', 'description', 'price', 'volume', 'keywords'].forEach(name => { form.elements[name].value = p[name] ?? ''; });
     form.elements.slug.readOnly = products.some(item => item.slug === p.slug);
     form.elements.specs.value = Object.entries(p.specs).map(([key, value]) => `${key}: ${value}`).join('\n');
-    form.elements.demo.checked = p.demo;
+    form.elements.demo.checked = p.demo; form.elements.priceIsEstimate.checked = !!p.priceIsEstimate;
     $('#product-editor-title').textContent = p.title; $('#product-status-label').textContent = t(p.demo ? 'Demonstration examples' : 'Real products');
     $('#product-public-link').href = window.Jermiq.link('/products/' + p.slug); $('#product-public-link').hidden = !products.some(item => item.slug === p.slug);
     selected.images = [...(p.images || [])]; renderGalleryEditor(); $('#product-preview').src = p.image; $('#product-image-upload').value = '';
@@ -298,7 +298,7 @@
     const data = new FormData(event.target), p = { ...selected };
     ['slug', 'title', 'category', 'brand', 'model', 'description', 'availability', 'keywords'].forEach(key => { p[key] = String(data.get(key)).trim(); });
     ['price', 'volume'].forEach(key => { p[key] = data.get(key) === '' ? null : Number(data.get(key)); });
-    p.demo = data.get('demo') === 'on';
+    p.demo = data.get('demo') === 'on'; p.priceIsEstimate = data.get('priceIsEstimate') === 'on';
     const lines = String(data.get('specs')).split('\n').filter(line => line.trim());
     const names = lines.map(line => line.slice(0,line.indexOf(':')).trim());
     if (lines.some(line => !line.includes(':') || !line.slice(0,line.indexOf(':')).trim()) || new Set(names).size !== names.length) { error(t('Use one unique specification name: value per line.')); return; }

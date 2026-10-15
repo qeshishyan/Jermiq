@@ -81,5 +81,6 @@ public static class DatabaseInitializer
         }
         await db.SaveChangesAsync();
         await UploadedCatalogImport.ApplyAsync(db, environment, scope.ServiceProvider.GetRequiredService<FileStorage>());
+        await RealCatalogImport.ApplyAsync(db, environment);
     }
 }

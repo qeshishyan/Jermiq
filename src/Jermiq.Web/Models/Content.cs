@@ -21,6 +21,8 @@ public sealed class Product
     public List<string> Images { get; set; } = [];
     [StringLength(1000)] public string Keywords { get; set; } = "";
     [JsonIgnore] public IEnumerable<string> Gallery => new[] { Image }.Concat(Images).Distinct();
+    public bool PriceIsEstimate { get; set; }
+    [StringLength(500)] public string SourceUrl { get; set; } = "";
     public bool Demo { get; set; }
 }
 

@@ -178,7 +178,7 @@ def main():
                 check('Deadline request created', request('/api/admin/lead', deadline, office_token, office)[0] == 201)
                 summary = get('/api/admin/dashboard', office)
                 check('Office overview has real counts and hides catalog administration', summary['urgent'] >= 1 and summary['overdue'] >= 1 and summary['active'] >= 1 and summary['catalog'] is None)
-                check('Admin overview has catalog readiness', get('/api/admin/dashboard')['catalog']['total'] == 45)
+                check('Admin overview has catalog readiness', get('/api/admin/dashboard')['catalog']['total'] == 55)
                 advanced = get('/api/admin/leads?q=Deadline&priority=urgent&source=office&assignee=' + assignee + '&due=overdue', office)
                 unicode_search = get('/api/admin/leads?q=' + urllib.parse.quote('արամ'), office)
                 check('Armenian name search is case insensitive', unicode_search['total'] == 1 and unicode_search['leads'][0]['lead']['id'] == deadline['id'])

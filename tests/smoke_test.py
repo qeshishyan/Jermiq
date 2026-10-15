@@ -104,7 +104,15 @@ def main():
                     check('SEO metadata ' + (path or '/'), '<link rel="canonical"' in text and 'og:title' in text and 'lang="hy"' in text)
                 status, _, body = request('/api/catalog')
                 products = json.loads(body)['products']
-                check('Original catalog and 35 uploaded parts imported', status == 200 and len(products) == 45)
+                check('Original catalog, uploaded parts and 10 real models imported', status == 200 and len(products) == 55)
+                real_bundle = json.loads((ROOT / 'src/Jermiq.Web/SeedData/Imports/real-products-10/products.json').read_text())
+                real_slugs = {p['slug'] for p in real_bundle}
+                real = [p for p in products if p['slug'] in real_slugs]
+                check('Ten real models include six heaters and four parts', len(real) == 10 and sum(p['category'] == 'heater' for p in real) == 6)
+                check('New prices are editable estimates with manufacturer photos', all(p['price'] > 0 and p['priceIsEstimate'] and p['image'].startswith('https://') and p['sourceUrl'].startswith('https://') for p in real))
+                sample = real[0]
+                sample_page = request('/products/' + sample['slug'])[2].decode()
+                check('Indicative price is visible and excluded from SEO offers', 'Կողմնորոշիչ գին' in html.unescape(sample_page) and '"offers"' not in sample_page)
                 for product in products:
                     status, _, body = request('/products/' + product['slug'])
                     check('SSR product ' + product['slug'], status == 200 and product['title'] in html.unescape(body.decode()))
@@ -173,6 +181,10 @@ def main():
                 check('Unsafe gallery image URL rejected', mutate(dict(action='product', product=dict(p, images=['javascript:alert(1)'])))[0] == 400)
                 check('Oversized gallery rejected', mutate(dict(action='product', product=dict(p, images=['/images/parts.webp'] * 12)))[0] == 400)
                 check('Product updates SSR and JSON-LD', 'QA Product' in text and '12345' in text and 'Product' in text)
+                real_product = next(p for p in data['products'] if p['slug'] in real_slugs)
+                check('Real model price and estimate flag can be updated', mutate(dict(action='product', product=dict(real_product, price=88000, priceIsEstimate=False)))[0] == 200)
+                updated = json.loads(request('/api/catalog')[2])['products']
+                check('Price edit preserves manufacturer photo', next(p for p in updated if p['slug'] == real_product['slug'])['image'] == real_product['image'])
                 setting = dict(data['settings'], phone='+374 99 123456', email='test@example.invalid', showDraftBanner=False, servicePrices={'diagnosis': 'QA price'})
                 check('Settings save', mutate(dict(action='settings', settings=setting))[0] == 200)
                 check('Settings visible in SSR', 'QA price' in html.unescape(request('/services')[2].decode()))

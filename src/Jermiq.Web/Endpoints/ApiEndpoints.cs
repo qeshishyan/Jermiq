@@ -152,8 +152,7 @@ public static class ApiEndpoints
                 var p = body.Product;
                 if (p is null || new[] { p.Title, p.Brand, p.Model, p.Description, p.Availability }.Any(x => x is null) || !Valid(p) || p.Specs is null || p.Specs.Count > 50 ||
                     p.Specs.Any(x => string.IsNullOrWhiteSpace(x.Key) || x.Key.Length > 100 || x.Value is null || x.Value.Length > 500) ||
-                    p.Images is null || p.Images.Count > 11 || p.Images.Any(image => !Regex.IsMatch(image ?? "", "^/(images/(hero|parts)\\.webp|api/product-image\\?id=[a-f0-9-]{36})$")) ||
-                    !Regex.IsMatch(p.Image ?? "", "^/(images/(hero|parts)\\.webp|api/product-image\\?id=[a-f0-9-]{36})$"))
+                    p.Images is null || p.Images.Count > 11 || p.Images.Any(image => !ProductImages.IsAllowed(image)) || !ProductImages.IsAllowed(p.Image))
                     return Error("Ստուգեք ապրանքի լրացված տվյալները։");
                 var row = await db.Products.SingleOrDefaultAsync(x => x.Slug == p.Slug, ct);
                 if (p.Revision != (row?.UpdatedAt ?? 0)) return Error("This product changed in another session. Reopen it before saving.", 409);

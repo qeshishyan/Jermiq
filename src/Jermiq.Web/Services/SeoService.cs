@@ -17,7 +17,7 @@ public sealed class SeoService
             throw new InvalidOperationException("Seo:BaseUrl must be an absolute site origin without a path or query.");
         IndexingEnabled = config.GetValue<bool>("Seo:IndexingEnabled") && !environment.IsDevelopment();
     }
-    public string Url(string path) => BaseUrl + (path.StartsWith('/') ? path : "/" + path);
+    public string Url(string path) => ProductImages.IsExternal(path) ? path : BaseUrl + (path.StartsWith('/') ? path : "/" + path);
     public string PageUrl(string path) => Url(localizer.Language == "hy" ? path : localizer.Link(path));
     public object Organization(SiteSettings s)
     {
@@ -46,7 +46,7 @@ public sealed class SeoService
         };
         if (!string.IsNullOrWhiteSpace(p.Brand)) data["brand"] = new Dictionary<string, string> { ["@type"] = "Brand", ["name"] = p.Brand };
         if (!string.IsNullOrWhiteSpace(p.Model)) data["model"] = p.Model;
-        if (p.Price is not null) data["offers"] = new Dictionary<string, object>
+        if (p.Price is not null && !p.PriceIsEstimate) data["offers"] = new Dictionary<string, object>
         {
             ["@type"] = "Offer", ["price"] = p.Price.Value, ["priceCurrency"] = "AMD", ["url"] = PageUrl("/products/" + p.Slug)
         };
