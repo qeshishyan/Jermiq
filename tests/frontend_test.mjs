@@ -79,6 +79,14 @@ search.value = 'silent 2000 aquatherm'; search.dispatchEvent(new w.Event('input'
 check('Client keyword search agrees with server across fields', d.querySelectorAll('#catalog-grid .product').length === 1 && d.querySelector('#catalog-grid').textContent.includes('QA Product'));
 click('[data-action="catalog-reset"]');
 check('Reset restores all four heaters', d.querySelectorAll('#catalog-grid .product').length === 4);
+const volumeFilter = d.querySelector('#catalog-volume'); volumeFilter.value = '80'; volumeFilter.dispatchEvent(new w.Event('change'));
+check('Selected volume is reflected in results and removable chip', d.querySelectorAll('#catalog-grid .product').length === 1 && !!d.querySelector('[data-clear-filter="catalog-volume"]') && !d.querySelector('#catalog-reset-top').hidden);
+click('[data-clear-filter="catalog-volume"]');
+check('Removing a filter chip restores the catalog and focus', volumeFilter.value === 'all' && d.querySelectorAll('#catalog-grid .product').length === 4 && d.activeElement === volumeFilter);
+d.querySelector('#catalog-sort').value = 'price'; d.querySelector('#catalog-sort').dispatchEvent(new w.Event('change'));
+click('#catalog-reset-top');
+check('Clear filters restores default sorting and removes all chips', d.querySelector('#catalog-sort').value === 'default' && !d.querySelector('#catalog-active-filters').children.length && d.querySelector('#catalog-reset-top').hidden);
+
 click('[data-request="service"]');
 check('Service form supports a second technical-label photo', !d.querySelector('#site-dialog [name="attachment2"]').disabled && d.querySelector('#site-dialog .photo-guide').textContent.includes('3–5'));
 check('Service fields are enabled in the service form', !d.querySelector('#site-dialog [name="issue"]').disabled);

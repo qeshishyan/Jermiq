@@ -11,6 +11,7 @@
   const price = value => Number(value).toLocaleString(culture, { maximumFractionDigits: 2 }) + ' ֏';
   const settings = JSON.parse($('#site-settings')?.textContent || '{}');
   const paths = {
+    sliders: '<path d="M4 7h16M4 17h16M8 4v6m8 4v6"/>',
     search: '<circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/>',
     'search-check': '<circle cx="10" cy="10" r="7"/><path d="m21 21-6-6m-8-5 2 2 4-4"/>',
     bag: '<path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4ZM3 6h18M16 10a4 4 0 0 1-8 0"/>',
@@ -173,6 +174,27 @@
     return `<article class="product" data-product="${escape(JSON.stringify(p))}"><a href="${link('/products/' + escape(p.slug))}" class="product-img"><img src="${escape(p.image)}" alt="${escape(p.demo ? t("Տեսականու պատկերային օրինակ") : p.title)}" width="460" height="300" loading="lazy">${p.volume ? `<span class="product-volume">${p.volume} ${escape(t("լ"))}</span>` : ''}</a><div class="product-copy"><div class="meta">${escape(p.demo ? t(p.category === "heater" ? "Ջրատաքացուցիչ" : "Պահեստամաս") : p.brand)}</div><a href="${link('/products/' + escape(p.slug))}"><h3>${escape(p.title)}</h3></a><div class="price">${p.price === null ? t("Հարցնել գինը") : price(p.price)}</div><div class="stock">${escape(p.availability)}</div><button type="button" class="btn" data-action="add-cart">${icon('bag')}${p.price === null ? t("Հարցնել գինը") : t("Ավելացնել պատվերին")}</button><button type="button" class="compare-button" data-action="compare-toggle" aria-pressed="false">${icon('scale')}<span>${escape(t("Համեմատել"))}</span></button></div></article>`;
   }
   const normalizeSearch = value => String(value ?? '').normalize('NFKC').toLowerCase().replaceAll('և', 'եւ').replace(/[^\p{L}\p{N}]+/gu, ' ').trim();
+  function updateFilterSummary() {
+    if (!$('#catalog-active-filters')) return;
+    const filters = [['catalog-query', t('Որոնում'), ''], ['catalog-volume', t('Տարողություն'), 'all'], ['catalog-brand', t('Արտադրող'), 'all'], ['catalog-sort', t('Դասավորել'), 'default']];
+    const active = filters.flatMap(([id,label,empty]) => {
+      const control = $('#' + id); if (!control) return [];
+      const selected = control.value.trim() !== empty;
+      control.closest('.filter-control')?.classList.toggle('is-active', selected);
+      if (!selected) return [];
+      const value = control.tagName === 'SELECT' ? control.selectedOptions[0].textContent : control.value.trim();
+      return [`<button type="button" class="filter-chip" data-clear-filter="${id}" aria-label="${escape(t('Հեռացնել ֆիլտրը') + ': ' + label + ' — ' + value)}"><span>${escape(label)}: <strong>${escape(value)}</strong></span><span aria-hidden="true">×</span></button>`];
+    });
+    $('#catalog-active-filters').innerHTML = active.join('');
+    $('#catalog-reset-top').hidden = !active.length;
+  }
+  $('#catalog-active-filters')?.addEventListener('click', event => {
+    const button = event.target.closest('[data-clear-filter]'); if (!button) return;
+    const control = $('#' + button.dataset.clearFilter);
+    control.value = control.id === 'catalog-query' ? '' : control.id === 'catalog-sort' ? 'default' : 'all';
+    filterCatalog(); control.focus();
+  });
+  updateFilterSummary();
   function filterCatalog() {
     if (!$('#catalog')) return;
     const query = normalizeSearch($('#catalog-query').value), category = query && location.pathname !== '/parts' ? '' : $('#catalog').dataset.category;
@@ -183,7 +205,7 @@
     if (sort === 'price') list.sort((a, b) => (a.price ?? Infinity) - (b.price ?? Infinity));
     if (sort === 'title') list.sort((a, b) => a.title.localeCompare(b.title, culture));
     $('#catalog-grid').innerHTML = list.map(productCard).join(''); $('#catalog-count').textContent = `${escape(t("Գտնվել է"))} ${list.length} ${escape(t("ապրանք"))}`; $('#catalog-empty').hidden = list.length > 0;
-    icons($('#catalog-grid')); updateCounts();
+    icons($('#catalog-grid')); updateCounts(); updateFilterSummary();
   }
   $('#catalog-query')?.addEventListener('input', filterCatalog);
   ['#catalog-volume', '#catalog-brand', '#catalog-sort'].forEach(s => $(s)?.addEventListener('change', filterCatalog));
@@ -220,7 +242,7 @@
         case 'choice-prev': choiceStep--; showChooser(); break;
         case 'choice-restart': choiceStep = 0; showChooser(); break;
         case 'choice-request': openRequest({ kind: 'question', subject: t("Օգնություն ջրատաքացուցիչի ընտրության հարցում"), details: `${escape(t("Ընտանիք՝"))} ${answers[0]}; ${escape(t("Տեղադրում՝"))} ${answers[1]}; ${escape(t("Օգտագործում՝"))} ${answers[2]}` }); break;
-        case 'catalog-reset': $('#catalog-query').value = ''; if ($('#catalog-volume')) $('#catalog-volume').value = 'all'; if ($('#catalog-brand')) $('#catalog-brand').value = 'all'; filterCatalog(); break;
+        case 'catalog-reset': $('#catalog-sort').value = 'default'; $('#catalog-query').value = ''; if ($('#catalog-volume')) $('#catalog-volume').value = 'all'; if ($('#catalog-brand')) $('#catalog-brand').value = 'all'; filterCatalog(); break;
       }
     } catch (err) { toast(err.message || t("Փորձեք կրկին։")); }
   });
