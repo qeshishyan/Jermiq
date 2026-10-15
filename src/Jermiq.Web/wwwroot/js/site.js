@@ -107,8 +107,9 @@
     try {
       const data = new FormData(form);
       if (data.get('kind') === 'service') data.set('subject', data.get('issue') || data.get('subject') || '');
-      const file = data.get('attachment');
+      for (const file of [data.get('attachment'), data.get('attachment2')]) {
       if (file instanceof File && file.size > 0 && (file.size > 5 * 1024 * 1024 || !['image/jpeg', 'image/png', 'image/webp'].includes(file.type))) throw new Error(t("Կցեք JPEG, PNG կամ WebP լուսանկար՝ մինչև 5 ՄԲ։"));
+      }
       const result = await api('/api/leads', { method: 'POST', body: data });
       form.innerHTML = `<div class="success" role="status">${icon('check')}<h3>${escape(t("Ձեր հայտը գրանցված է"))}</h3><p>${escape(t("Տվյալները պահպանվել են։ Հայտը կընդունվի թիմի կողմից՝ կապ հաստատելու համար։"))}</p><div class="reference">${escape(t("Հայտի համարը՝"))} ${escape(result.id)}</div>${settings.showDraftBanner ? `<p class="form-note">${escape(t("Այս տարբերակը նախնական փորձարկման համար է։"))}</p>` : ''}</div>`;
       icons(form);
@@ -171,11 +172,14 @@
   function productCard(p) {
     return `<article class="product" data-product="${escape(JSON.stringify(p))}"><a href="${link('/products/' + escape(p.slug))}" class="product-img"><img src="${escape(p.image)}" alt="${escape(p.demo ? t("Տեսականու պատկերային օրինակ") : p.title)}" width="460" height="300" loading="lazy">${p.volume ? `<span class="product-volume">${p.volume} ${escape(t("լ"))}</span>` : ''}</a><div class="product-copy"><div class="meta">${escape(p.demo ? t("Ցուցադրական օրինակ") : p.brand)}</div><a href="${link('/products/' + escape(p.slug))}"><h3>${escape(p.title)}</h3></a><div class="price">${p.price === null ? t("Գինը՝ շուտով") : price(p.price)}</div><div class="stock">${escape(p.availability)}</div><button type="button" class="btn" data-action="add-cart">${icon('bag')}${p.price === null ? t("Հարցնել գինը") : t("Ավելացնել պատվերին")}</button><button type="button" class="compare-button" data-action="compare-toggle" aria-pressed="false">${icon('scale')}<span>${escape(t("Համեմատել"))}</span></button></div></article>`;
   }
+  const normalizeSearch = value => String(value ?? '').normalize('NFKC').toLowerCase().replaceAll('և', 'եւ').replace(/[^\p{L}\p{N}]+/gu, ' ').trim();
   function filterCatalog() {
     if (!$('#catalog')) return;
-    const query = $('#catalog-query').value.toLocaleLowerCase(culture), category = $('#catalog').dataset.category;
+    const query = normalizeSearch($('#catalog-query').value), category = query && location.pathname !== '/parts' ? '' : $('#catalog').dataset.category;
     const volume = $('#catalog-volume')?.value || 'all', brand = $('#catalog-brand')?.value || 'all', sort = $('#catalog-sort').value;
-    const list = JSON.parse(catalogData.textContent).filter(p => (!category || p.category === category) && (volume === 'all' || p.volume === Number(volume)) && (brand === 'all' || p.brand === brand) && [p.title, p.description, p.brand, p.model, p.slug, ...Object.values(p.specs)].join(' ').toLocaleLowerCase(culture).includes(query));
+    const list = JSON.parse(catalogData.textContent).filter(p => (!category || p.category === category) && (volume === 'all' || p.volume === Number(volume)) && (brand === 'all' || p.brand === brand) && query.split(' ').filter(Boolean).every(word => normalizeSearch([p.title, p.description, p.brand, p.model, p.slug, p.keywords, p.volume, ...Object.keys(p.specs), ...Object.values(p.specs)].join(' ')).includes(word)));
+    const searchUrl = new URL(location.href); query ? searchUrl.searchParams.set('q', $('#catalog-query').value.trim()) : searchUrl.searchParams.delete('q'); history.replaceState(null, '', searchUrl);
+    if (sort === 'default' && query) list.sort((a,b) => Number(normalizeSearch(b.title).includes(query)) - Number(normalizeSearch(a.title).includes(query)));
     if (sort === 'price') list.sort((a, b) => (a.price ?? Infinity) - (b.price ?? Infinity));
     if (sort === 'title') list.sort((a, b) => a.title.localeCompare(b.title, culture));
     $('#catalog-grid').innerHTML = list.map(productCard).join(''); $('#catalog-count').textContent = `${escape(t("Գտնվել է"))} ${list.length} ${escape(t("ապրանք"))}`; $('#catalog-empty').hidden = list.length > 0;
@@ -220,6 +224,28 @@
       }
     } catch (err) { toast(err.message || t("Փորձեք կրկին։")); }
   });
+  const gallery = $('[data-gallery]');
+  if (gallery) {
+    const thumbs = $$('[data-gallery-src]', gallery), viewer = $('.gallery-lightbox', gallery);
+    let current = 0;
+    const show = index => {
+      current = (index + thumbs.length) % thumbs.length;
+      const src = thumbs[current].dataset.gallerySrc;
+      $('#gallery-main').src = src; $('.gallery-stage img', viewer).src = src;
+      thumbs.forEach((button,i) => button.setAttribute('aria-pressed', String(i === current)));
+      $('.gallery-counter', viewer).textContent = `${current+1} / ${thumbs.length}`;
+      viewer.classList.remove('is-zoomed');
+    };
+    thumbs.forEach((button,i) => button.addEventListener('click', () => show(i)));
+    $('.gallery-open', gallery).addEventListener('click', () => { show(current); viewer.showModal(); });
+    $('[data-gallery-close]', viewer).addEventListener('click', () => viewer.close());
+    $('[data-gallery-prev]', viewer).addEventListener('click', () => show(current-1));
+    $('[data-gallery-next]', viewer).addEventListener('click', () => show(current+1));
+    $('[data-gallery-zoom]', viewer).addEventListener('click', () => viewer.classList.toggle('is-zoomed'));
+    viewer.addEventListener('keydown', e => { if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') { e.preventDefault(); show(current + (e.key === 'ArrowLeft' ? -1 : 1)); } });
+    viewer.addEventListener('click', e => { if (e.target === viewer) viewer.close(); });
+    show(0);
+  }
   if (document.modelContext?.registerTool) {
     try {
       document.modelContext.registerTool({ name: 'start_service_request', title: t("Բացել սպասարկման հայտը"), description: 'Opens the service form without submitting it.', inputSchema: { type: 'object', properties: { issue: { type: 'string', maxLength: 200 } }, additionalProperties: false }, annotations: { readOnlyHint: false }, execute(input) {

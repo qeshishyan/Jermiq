@@ -42,7 +42,7 @@ public sealed class SeoService
         var data = new Dictionary<string, object>
         {
             ["@context"] = "https://schema.org", ["@type"] = "Product", ["name"] = p.Title,
-            ["description"] = p.Description, ["image"] = Url(p.Image), ["url"] = PageUrl("/products/" + p.Slug)
+            ["description"] = p.Description, ["image"] = p.Gallery.Select(Url).ToArray(), ["url"] = PageUrl("/products/" + p.Slug)
         };
         if (!string.IsNullOrWhiteSpace(p.Brand)) data["brand"] = new Dictionary<string, string> { ["@type"] = "Brand", ["name"] = p.Brand };
         if (!string.IsNullOrWhiteSpace(p.Model)) data["model"] = p.Model;

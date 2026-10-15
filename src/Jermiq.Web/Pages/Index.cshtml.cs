@@ -32,7 +32,7 @@ public sealed class SitePageModel(CatalogService catalog, StaticContent content,
             _ => ("", "")
         };
         if (Title.Length == 0) return NotFound();
-        Query = (q ?? "").Length > 200 ? q![..200] : q ?? "";
+        Query = (q ?? "").Length > 200 ? q![..200] : (q ?? "").Trim();
         Products = await catalog.GetProductsAsync(ct);
         Settings = await catalog.GetSettingsAsync(ct);
         var canonicalPath = PageName == "home" ? "/" : "/" + PageName;
@@ -44,6 +44,5 @@ public sealed class SitePageModel(CatalogService catalog, StaticContent content,
         return Page();
     }
     public bool Matches(Product p) => (Category is null || p.Category == Category) &&
-        string.Join(' ', new[] { p.Title, p.Description, p.Brand, p.Model, p.Slug }.Concat(p.Specs.Values))
-            .Contains(Query, StringComparison.OrdinalIgnoreCase);
+        ProductSearch.Matches(p, Query);
 }

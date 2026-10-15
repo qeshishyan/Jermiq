@@ -142,6 +142,7 @@
     $('#lead-reference').textContent = l.created_at ? l.id : '';
     $('#lead-attachment-area').hidden = !l.created_at;
     $('#lead-attachment').value = '';
+    $('#lead-label-link').hidden = !JSON.parse(l.details || '{}').labelAttachment; $('#lead-label-link').href = '/api/attachments?id=' + l.id + '&photo=2';
     $('#lead-attachment-link').hidden = !l.attachment; $('#lead-attachment-link').href = '/api/attachments?id=' + l.id;
     $('#lead-notes').innerHTML = (o.notes || []).slice().reverse().map(n => `<article>${escape(n.text)}<small>${escape(n.actor)} · ${escape(date(n.at))}</small></article>`).join('') || `<p class="text-sm">${escape(t('No notes yet'))}</p>`;
     $('#lead-history').innerHTML = (o.history || []).slice().reverse().map(n => `<article>${escape(t(n.action))}${Object.entries(n.changes || {}).map(([key, value]) => `<p>${escape(t(key))}: ${escape(value)}</p>`).join('')}<small>${escape(n.actor)} · ${escape(date(n.at))}</small></article>`).join('') || `<p class="text-sm">${escape(t('Website request'))}</p>`;
@@ -242,15 +243,27 @@
   function fillProduct(p, reveal = true) {
     selected = structuredClone(p); productBaseline = structuredClone(p); dirty.delete('product-form'); const form = $('#product-form');
     if (reveal) form.hidden = false;
-    ['slug', 'title', 'category', 'brand', 'model', 'availability', 'description', 'price', 'volume'].forEach(name => { form.elements[name].value = p[name] ?? ''; });
+    ['slug', 'title', 'category', 'brand', 'model', 'availability', 'description', 'price', 'volume', 'keywords'].forEach(name => { form.elements[name].value = p[name] ?? ''; });
     form.elements.slug.readOnly = products.some(item => item.slug === p.slug);
     form.elements.specs.value = Object.entries(p.specs).map(([key, value]) => `${key}: ${value}`).join('\n');
     form.elements.demo.checked = p.demo;
     $('#product-editor-title').textContent = p.title; $('#product-status-label').textContent = t(p.demo ? 'Demonstration examples' : 'Real products');
     $('#product-public-link').href = window.Jermiq.link('/products/' + p.slug); $('#product-public-link').hidden = !products.some(item => item.slug === p.slug);
-    $('#product-preview').src = p.image; $('#product-image-upload').value = '';
+    selected.images = [...(p.images || [])]; renderGalleryEditor(); $('#product-preview').src = p.image; $('#product-image-upload').value = '';
     renderProducts(); syncDrafts(); if (reveal && innerWidth <= 1100) form.scrollIntoView?.({behavior:'smooth',block:'start'});
   }
+  function renderGalleryEditor() {
+    const images = [selected.image, ...(selected.images || [])];
+    $('#product-gallery-editor').innerHTML = images.map((src,i) => `<div><img src="${escape(src)}" alt="${i+1}" width="72" height="72"><button type="button" data-gallery-main="${i}">${escape(t(i === 0 ? 'Գլխավոր' : 'Դարձնել գլխավոր'))}</button>${images.length > 1 ? `<button type="button" data-gallery-remove="${i}">${escape(t('Հեռացնել'))}</button>` : ''}</div>`).join('');
+  }
+  root.addEventListener('click', event => {
+    const button = event.target.closest('[data-gallery-main], [data-gallery-remove]'); if (!button || !selected || busy) return;
+    const images = [selected.image, ...(selected.images || [])];
+    if (button.dataset.galleryRemove !== undefined) images.splice(Number(button.dataset.galleryRemove),1);
+    else images.unshift(...images.splice(Number(button.dataset.galleryMain),1));
+    selected.image = images.shift(); selected.images = images; dirty.add('product-form');
+    $('#product-preview').src = selected.image; renderGalleryEditor(); syncDrafts();
+  });
   function fillSettings() {
     const form = $('#settings-form');
     ['phone', 'email', 'address', 'hours', 'warranty', 'delivery'].forEach(name => { form.elements[name].value = settings[name] || ''; });
@@ -266,12 +279,16 @@
   $('#product-reset').addEventListener('click', () => { if (discard('product-form')) fillProduct(productBaseline); });
   $('#product-new').addEventListener('click', () => { if (!discard('product-form')) return; fillProduct({ slug: `new-${Date.now()}`, title: t("Նոր ապրանք"), category: 'heater', volume: null, brand: '', model: '', description: '', price: null, availability: t("Առկայությունը ճշտվում է"), specs: {}, image: '/images/hero.webp', demo: false }); });
   $('#product-image-upload').addEventListener('change', async event => {
-    const file = event.target.files?.[0]; if (!file || !selected) return;
+    const files = [...(event.target.files || [])]; if (!files.length || !selected) return; if (files.length + (selected.images || []).length + (selected.demo || ['/images/hero.webp','/images/parts.webp'].includes(selected.image) ? 0 : 1) > 12) { error(t('Առավելագույնը՝ 12 նկար։')); return; }
     setBusy(true); error('');
     try {
-      const data = new FormData(); data.set('image', file);
-      const result = await api('/api/product-image', { method: 'POST', body: data });
-      selected.image = result.image; $('#product-preview').src = result.image;
+      for (const file of files) {
+        const data = new FormData(); data.set('image', file);
+        const result = await api('/api/product-image', { method: 'POST', body: data });
+        if (selected.demo || selected.image === '/images/hero.webp' || selected.image === '/images/parts.webp') { selected.image = result.image; selected.demo = false; $('#product-form').elements.demo.checked = false; }
+        else (selected.images ||= []).push(result.image);
+        dirty.add('product-form'); $('#product-preview').src = selected.image; renderGalleryEditor(); syncDrafts();
+      } $('#product-preview').src = selected.image;
       notice(t("Պատկերը բեռնված է։ Պահպանեք ապրանքը։"));
     } catch (err) { error(err.message); }
     finally { setBusy(false); }
@@ -279,7 +296,7 @@
   $('#product-form').addEventListener('submit', event => {
     event.preventDefault(); if (busy || !selected) return;
     const data = new FormData(event.target), p = { ...selected };
-    ['slug', 'title', 'category', 'brand', 'model', 'description', 'availability'].forEach(key => { p[key] = String(data.get(key)).trim(); });
+    ['slug', 'title', 'category', 'brand', 'model', 'description', 'availability', 'keywords'].forEach(key => { p[key] = String(data.get(key)).trim(); });
     ['price', 'volume'].forEach(key => { p[key] = data.get(key) === '' ? null : Number(data.get(key)); });
     p.demo = data.get('demo') === 'on';
     const lines = String(data.get('specs')).split('\n').filter(line => line.trim());

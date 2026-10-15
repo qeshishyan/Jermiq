@@ -18,6 +18,9 @@ public sealed class Product
     [StringLength(200)] public string Availability { get; set; } = "";
     public Dictionary<string, string> Specs { get; set; } = [];
     public string Image { get; set; } = "/images/hero.webp";
+    public List<string> Images { get; set; } = [];
+    [StringLength(1000)] public string Keywords { get; set; } = "";
+    [JsonIgnore] public IEnumerable<string> Gallery => new[] { Image }.Concat(Images).Distinct();
     public bool Demo { get; set; }
 }
 

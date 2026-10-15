@@ -76,8 +76,7 @@ def main():
                 parts = []
                 for key, value in fields.items():
                     parts.append(f'--{boundary}\r\nContent-Disposition: form-data; name="{key}"\r\n\r\n{value}\r\n'.encode())
-                if file:
-                    field, mime, value = file
+                for field, mime, value in (file if isinstance(file, list) else [file] if file else []):
                     parts.append(f'--{boundary}\r\nContent-Disposition: form-data; name="{field}"; filename="test.png"\r\nContent-Type: {mime}\r\n\r\n'.encode() + value + b'\r\n')
                 parts.append(f'--{boundary}--\r\n'.encode())
                 return b''.join(parts), 'multipart/form-data; boundary=' + boundary
@@ -129,7 +128,7 @@ def main():
                 body, mime = multipart(fields)
                 check('CSRF enforced', request('/api/leads', body, mime)[0] == 400)
                 png = base64.b64decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jR5kAAAAASUVORK5CYII=')
-                body, mime = multipart(fields, ('attachment', 'image/png', png))
+                body, mime = multipart(fields, [('attachment', 'image/png', png), ('attachment2', 'image/png', png)] )
                 status, _, response = request('/api/leads', body, mime, token)
                 lead_id = json.loads(response)['id']
                 check('Lead saved with attachment', status == 201 and lead_id == fields['requestId'])
@@ -154,6 +153,7 @@ def main():
                 data = json.loads(request('/api/admin')[2])
                 check('Administrator can see saved leads', len(data['leads']) == 5 and any(x['id'] == lead_id for x in data['leads']))
                 status, headers, body = request('/api/attachments?id=' + lead_id)
+                check('Technical label photo is protected and downloadable', request('/api/attachments?id=' + lead_id + '&photo=2')[2] == png)
                 check('Protected attachment download', status == 200 and body == png and headers.get('Cache-Control') == 'private, no-store')
                 def mutate(value, csrf_token=admin_token):
                     return request('/api/admin', json.dumps(value).encode(), 'application/json', csrf_token)
@@ -164,14 +164,20 @@ def main():
                 status, _, response = request('/api/product-image', upload, upload_mime, admin_token)
                 image_url = json.loads(response)['image']
                 check('Administrator product image upload', status == 200 and request(image_url)[2] == png)
-                p = dict(products[0], title='QA Product', price=12345, demo=False, image=image_url, specs={'Power': '2000 W'})
+                p = dict(products[0], title='QA Product', price=12345, demo=False, image=image_url, images=['/images/parts.webp'], keywords='aquatherm silent', specs={'Power': '2000 W'})
                 check('Product save', mutate(dict(action='product', product=p))[0] == 200)
                 text = html.unescape(request('/products/' + p['slug'])[2].decode())
+                check('Product gallery renders both photos', text.count('data-gallery-src=') == 2 and 'gallery-lightbox' in text)
+                query_page = html.unescape(request('/catalog?q=silent+2000+aquatherm')[2].decode())
+                check('Server keyword search matches words in any order across fields', 'QA Product' in query_page.split('id="catalog-grid"')[1].split('</div>')[0])
+                check('Unsafe gallery image URL rejected', mutate(dict(action='product', product=dict(p, images=['javascript:alert(1)'])))[0] == 400)
+                check('Oversized gallery rejected', mutate(dict(action='product', product=dict(p, images=['/images/parts.webp'] * 12)))[0] == 400)
                 check('Product updates SSR and JSON-LD', 'QA Product' in text and '12345' in text and 'Product' in text)
                 setting = dict(data['settings'], phone='+374 99 123456', email='test@example.invalid', showDraftBanner=False, servicePrices={'diagnosis': 'QA price'})
                 check('Settings save', mutate(dict(action='settings', settings=setting))[0] == 200)
                 check('Settings visible in SSR', 'QA price' in html.unescape(request('/services')[2].decode()))
                 check('Lead delete', mutate(dict(action='delete', id=lead_id))[0] == 200)
+                check('Deleted technical label unavailable', request('/api/attachments?id=' + lead_id + '&photo=2')[0] == 404)
                 check('Deleted attachment unavailable', request('/api/attachments?id=' + lead_id)[0] == 404)
                 check('No duplicate lead after replay', len(json.loads(request('/api/admin')[2])['leads']) == 4)
                 if args.frontend:

@@ -52,12 +52,14 @@ public static class ApiEndpoints
             ctx.Response.Headers.CacheControl = "public, max-age=86400";
             return Results.File(path, FileStorage.ContentType(path));
         });
-        app.MapGet("/api/attachments", async (string? id, AppDbContext db, FileStorage storage, HttpContext ctx, CancellationToken ct) =>
+        app.MapGet("/api/attachments", async (string? id, int? photo, AppDbContext db, FileStorage storage, HttpContext ctx, CancellationToken ct) =>
         {
             if (!Guid.TryParseExact(id, "D", out var guid)) return Error("Ֆայլը չի գտնվել։", 404);
             var lead = await db.Leads.AsNoTracking().SingleOrDefaultAsync(x => x.Id == guid.ToString(), ct);
-            if (lead?.Attachment is null) return Error("Ֆայլը չի գտնվել։", 404);
-            var path = storage.Resolve(lead.Attachment);
+            if (lead is null) return Error("Ֆայլը չի գտնվել։", 404);
+            var attachment = photo == 2 ? LeadPhotos.Label(lead) : lead.Attachment;
+            if (attachment is null) return Error("Ֆայլը չի գտնվել։", 404);
+            var path = storage.Resolve(attachment);
             if (!File.Exists(path)) return Error("Ֆայլը չի գտնվել։", 404);
             ctx.Response.Headers.CacheControl = "private, no-store";
             return Results.File(path, FileStorage.ContentType(path), $"attachment-{lead.Id}{Path.GetExtension(path)}");
@@ -77,6 +79,7 @@ public static class ApiEndpoints
             return value;
         }
         string? savedFile = null;
+        string? savedLabel = null;
         var committed = false;
         try
         {
@@ -90,6 +93,8 @@ public static class ApiEndpoints
                 (email.Length > 0 && !new EmailAddressAttribute().IsValid(email)))
                 return Error("Ստուգեք անունը, հեռախոսը, էլ․ փոստը և համաձայնությունը։");
             var message = Text("message", 3000);
+            var detailValues = new Dictionary<string, string>
+            { ["subject"] = Text("subject", 200), ["brand"] = Text("brand", 100), ["model"] = Text("model", 100), ["selection"] = Text("details", 6000) };
             var details = SiteJson.Serialize(new
             {
                 subject = Text("subject", 200), brand = Text("brand", 100), model = Text("model", 100),
@@ -99,13 +104,17 @@ public static class ApiEndpoints
             var id = Guid.TryParseExact(submittedId, "D", out var guid) ? guid.ToString() : Guid.NewGuid().ToString();
             var file = form.Files.GetFile("attachment");
             CheckedImage? image = file is { Length: > 0 } ? await FileStorage.ValidateImageAsync(file, ct) : null;
+            var labelFile = form.Files.GetFile("attachment2");
+            CheckedImage? labelImage = labelFile is { Length: > 0 } ? await FileStorage.ValidateImageAsync(labelFile, ct) : null;
             // Idempotency compares the actual payload, including attachment bytes.
             var hash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(SiteJson.Serialize(new
-            { kind, name, phone, email, message, details, attachmentHash = image?.Hash }))));
+            { kind, name, phone, email, message, details, attachmentHash = image?.Hash, labelHash = labelImage?.Hash }))));
             var existing = await db.Leads.AsNoTracking().SingleOrDefaultAsync(x => x.Id == id, ct);
             if (existing is not null) return existing.PayloadHash == hash
                 ? Results.Json(new { id }) : Error("Այս հայտի համարը կիրառվել է այլ տվյալներով։ Թարմացրեք ձևը։", 409);
             if (image is not null) savedFile = await storage.SaveAsync("leads", Guid.NewGuid().ToString(), image, ct);
+            if (labelImage is not null) { savedLabel = await storage.SaveAsync("leads", Guid.NewGuid().ToString(), labelImage, ct); detailValues["labelAttachment"] = savedLabel; }
+            details = SiteJson.Serialize(detailValues);
             var lead = new Lead
             {
                 Id = id, Kind = kind, Name = name, Phone = phone, Email = email, Message = message,
@@ -125,7 +134,7 @@ public static class ApiEndpoints
             return Results.Json(new { id }, statusCode: 201);
         }
         catch (ArgumentException e) { return Error(e.Message); }
-        finally { if (!committed && savedFile is not null) storage.Delete(savedFile); }
+        finally { if (!committed) { storage.Delete(savedFile); storage.Delete(savedLabel); } }
     }
 
     private static async Task<IResult> MutateAdminAsync(HttpContext ctx, IAntiforgery anti, AppDbContext db,
@@ -143,6 +152,7 @@ public static class ApiEndpoints
                 var p = body.Product;
                 if (p is null || new[] { p.Title, p.Brand, p.Model, p.Description, p.Availability }.Any(x => x is null) || !Valid(p) || p.Specs is null || p.Specs.Count > 50 ||
                     p.Specs.Any(x => string.IsNullOrWhiteSpace(x.Key) || x.Key.Length > 100 || x.Value is null || x.Value.Length > 500) ||
+                    p.Images is null || p.Images.Count > 11 || p.Images.Any(image => !Regex.IsMatch(image ?? "", "^/(images/(hero|parts)\\.webp|api/product-image\\?id=[a-f0-9-]{36})$")) ||
                     !Regex.IsMatch(p.Image ?? "", "^/(images/(hero|parts)\\.webp|api/product-image\\?id=[a-f0-9-]{36})$"))
                     return Error("Ստուգեք ապրանքի լրացված տվյալները։");
                 var row = await db.Products.SingleOrDefaultAsync(x => x.Slug == p.Slug, ct);
@@ -181,7 +191,7 @@ public static class ApiEndpoints
                     db.Leads.Remove(lead);
                     await db.SaveChangesAsync(ct);
                     await transaction.CommitAsync(ct);
-                    storage.Delete(lead.Attachment);
+                    storage.Delete(lead.Attachment); storage.Delete(LeadPhotos.Label(lead));
                     return Results.Json(new { ok = true });
                 }
                 break;

@@ -175,7 +175,7 @@ public static class BackOfficeEndpoints
         var action = created ? "Հայտը ստեղծվել է օֆիսից" : "Request edited";
         lead!.Kind = edit.Kind.Trim(); lead.Name = edit.Name.Trim(); lead.Phone = edit.Phone.Trim(); lead.Email = edit.Email?.Trim() ?? "";
         lead.Message = edit.Message.Trim(); lead.Status = edit.Status;
-        lead.Details = SiteJson.Serialize(new { subject = edit.Subject.Trim(), brand = edit.Brand.Trim(), model = edit.Model.Trim(), selection = edit.Selection.Trim() });
+        lead.Details = SiteJson.Serialize(new { subject = edit.Subject.Trim(), brand = edit.Brand.Trim(), model = edit.Model.Trim(), selection = edit.Selection.Trim(), labelAttachment = LeadPhotos.Label(lead) });
         office.Source = edit.Source; office.Priority = edit.Priority; office.Assignee = edit.Assignee;
         office.Address = edit.Address.Trim(); office.Subject = edit.Subject.Trim(); office.Brand = edit.Brand.Trim(); office.Model = edit.Model.Trim(); office.Selection = edit.Selection.Trim(); office.DueAt = edit.DueAt;
         if (!string.IsNullOrWhiteSpace(edit.Note)) office.Notes.Add(new OfficeNote(DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(), ctx.User.Identity?.Name ?? "", edit.Note.Trim()));
