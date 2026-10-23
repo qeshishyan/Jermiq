@@ -91,13 +91,18 @@ public static class BackOfficeEndpoints
             foreach (var l in leads) csv.AppendLine(string.Join(',', new[] { l.Id, l.Kind, l.Name, l.Phone, l.Email, l.Status, DateTimeOffset.FromUnixTimeMilliseconds(l.CreatedAt).ToString("O"), l.Message }.Select(Cell)));
             return Results.File(Encoding.UTF8.GetBytes(csv.ToString()), "text/csv; charset=utf-8", "jermiq-requests.csv");
         }).RequireAuthorization("BackOffice");
-        app.MapGet("/api/admin/cms", async (AppDbContext db, ContentLocalizer l, CatalogService catalog, CancellationToken ct) =>
+        app.MapGet("/api/admin/cms", async (AppDbContext db, ContentLocalizer l, CatalogService catalog, StoreCatalogService store, CancellationToken ct) =>
         {
             // Include newly entered product/contact phrases so they can be translated from CMS.
             foreach (var p in await catalog.GetProductsAsync(ct, false))
                 foreach (var text in new[] { p.Title, p.Description, p.Availability }) AddText(l.Content, text);
             var s = await catalog.GetSettingsAsync(ct, false);
             foreach (var text in new[] { s.Address, s.Hours, s.Warranty, s.Delivery }.Concat(s.ServicePrices.Values)) AddText(l.Content, text);
+            var configuration = await store.GetAsync(ct, false);
+            foreach (var text in configuration.Categories.SelectMany(c => new[] { c.Title, c.Description }).Concat(new[] {
+                configuration.Home.Eyebrow, configuration.Home.Title, configuration.Home.Intro, configuration.Home.PhotoHelpTitle,
+                configuration.Home.PhotoHelpText, configuration.Home.FeaturedTitle, configuration.Home.WholesaleTitle,
+                configuration.Home.WholesaleText, configuration.PaymentText, configuration.AboutText })) AddText(l.Content, text);
             foreach (var text in l.Content.Services.SelectMany(s => new[] { s.Title, s.Desc }).Concat(l.Content.Articles.SelectMany(a => new[] { a.Title, a.Intro }.Concat(a.Sections.SelectMany(s => s))))) AddText(l.Content, text);
             return Results.Json(l.Content);
         }).RequireAuthorization("Admin");

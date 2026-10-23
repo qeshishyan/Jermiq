@@ -6,6 +6,7 @@ import argparse
 import base64
 import concurrent.futures
 import html
+from html.parser import HTMLParser
 import http.cookiejar
 import json
 import os
@@ -22,6 +23,18 @@ import uuid
 import xml.etree.ElementTree as ET
 
 ROOT = Path(__file__).resolve().parents[1]
+
+
+class ProductCards(HTMLParser):
+    """Read SSR product payloads without depending on the catalog's layout wrappers."""
+    def __init__(self):
+        super().__init__()
+        self.products = []
+
+    def handle_starttag(self, tag, attrs):
+        attrs = dict(attrs)
+        if tag == 'article' and attrs.get('data-product'):
+            self.products.append(json.loads(attrs['data-product']))
 
 
 def main():
@@ -172,16 +185,19 @@ def main():
                 status, _, response = request('/api/product-image', upload, upload_mime, admin_token)
                 image_url = json.loads(response)['image']
                 check('Administrator product image upload', status == 200 and request(image_url)[2] == png)
-                p = dict(products[0], title='QA Product', price=12345, demo=False, image=image_url, images=['/images/parts.webp'], keywords='aquatherm silent', specs={'Power': '2000 W'})
+                gallery_sample = next(item for item in products if item['slug'] == 'electric-30')
+                p = dict(gallery_sample, title='QA Product', price=12345, demo=False, image=image_url, images=['/images/parts.webp'], keywords='aquatherm silent', specs={'Power': '2000 W'})
                 check('Product save', mutate(dict(action='product', product=p))[0] == 200)
                 text = html.unescape(request('/products/' + p['slug'])[2].decode())
                 check('Product gallery renders both photos', text.count('data-gallery-src=') == 2 and 'gallery-lightbox' in text)
-                query_page = html.unescape(request('/catalog?q=silent+2000+aquatherm')[2].decode())
-                check('Server keyword search matches words in any order across fields', 'QA Product' in query_page.split('id="catalog-grid"')[1].split('</div>')[0])
+                matched_cards = ProductCards()
+                matched_cards.feed(request('/catalog?q=silent+2000+aquatherm')[2].decode())
+                check('Server keyword search matches words in any order across fields',
+                      [item['slug'] for item in matched_cards.products] == [p['slug']])
                 check('Unsafe gallery image URL rejected', mutate(dict(action='product', product=dict(p, images=['javascript:alert(1)'])))[0] == 400)
                 check('Oversized gallery rejected', mutate(dict(action='product', product=dict(p, images=['/images/parts.webp'] * 12)))[0] == 400)
                 check('Product updates SSR and JSON-LD', 'QA Product' in text and '12345' in text and 'Product' in text)
-                real_product = next(p for p in data['products'] if p['slug'] in real_slugs)
+                real_product = next(p for p in json.loads(request('/api/admin')[2])['products'] if p['slug'] in real_slugs)
                 check('Real model price and estimate flag can be updated', mutate(dict(action='product', product=dict(real_product, price=88000, priceIsEstimate=False)))[0] == 200)
                 updated = json.loads(request('/api/catalog')[2])['products']
                 check('Price edit preserves manufacturer photo', next(p for p in updated if p['slug'] == real_product['slug'])['image'] == real_product['image'])

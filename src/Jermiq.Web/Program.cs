@@ -72,6 +72,7 @@ builder.Services.Configure<ForwardedHeadersOptions>(o =>
         o.KnownProxies.Add(IPAddress.Parse(proxy));
 });
 builder.Services.AddScoped<CatalogService>();
+builder.Services.AddScoped<StoreCatalogService>();
 builder.Services.AddSingleton<CmsDefaults>();
 builder.Services.AddScoped<ContentLocalizer>();
 builder.Services.AddScoped<StaticContent>();
@@ -82,12 +83,13 @@ builder.Services.AddRateLimiter(o =>
     o.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(ctx =>
     {
         var sensitive = HttpMethods.IsPost(ctx.Request.Method) &&
-            (ctx.Request.Path == "/api/leads" || ctx.Request.Path == "/admin/login");
+            (ctx.Request.Path == "/api/leads" || ctx.Request.Path == "/api/orders" ||
+             (ctx.Request.Path.StartsWithSegments("/api/products") && ctx.Request.Path.Value!.EndsWith("/reviews", StringComparison.Ordinal)) || ctx.Request.Path == "/admin/login");
         if (!sensitive) return RateLimitPartition.GetNoLimiter("unlimited");
         var ip = ctx.Connection.RemoteIpAddress?.ToString() ?? "unknown";
         return RateLimitPartition.GetFixedWindowLimiter($"{ctx.Request.Path}:{ip}", _ => new FixedWindowRateLimiterOptions
         {
-            PermitLimit = ctx.Request.Path == "/api/leads" ? 30 : 10,
+            PermitLimit = ctx.Request.Path == "/api/leads" || ctx.Request.Path == "/api/orders" ? 30 : 10,
             Window = TimeSpan.FromMinutes(15), QueueLimit = 0, AutoReplenishment = true
         });
     });
@@ -178,6 +180,9 @@ app.UseAuthorization();
 app.UseAntiforgery();
 app.MapRazorPages();
 app.MapJermiqApi();
+app.MapStoreCatalogApi();
+app.MapStoreOrderApi();
+app.MapProductReviewApi();
 app.MapBackOfficeApi();
 app.MapManagementApi();
 app.MapSeoEndpoints();

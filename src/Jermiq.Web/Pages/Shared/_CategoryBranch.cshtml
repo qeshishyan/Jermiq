@@ -1,0 +1,4 @@
+@model KeyValuePair<StoreCategory, IReadOnlyList<StoreCategory>>
+@{ var node = Model.Key; var children = Model.Value.Where(x => x.ParentId == node.Id).OrderBy(x => x.SortOrder).ThenBy(x => x.Title).ToList(); var selected = Context.Request.Query["category"].ToString(); var descendants = StoreCatalogService.DescendantIds(Model.Value, node.Id); }
+@if (children.Count > 0) { <details class="store-tree-branch" open="@descendants.Contains(selected)"><summary><a href="@("/catalog?category=" + Uri.EscapeDataString(node.Id))" class="@(node.Id == selected ? "selected" : "")">@node.Title</a></summary><div class="store-tree-nested">@foreach (var child in children) { <partial name="_CategoryBranch" model="@(new KeyValuePair<StoreCategory, IReadOnlyList<StoreCategory>>(child, Model.Value))" /> }</div></details> }
+else { <a class="store-tree-leaf @(node.Id == selected ? "selected" : "")" href="@("/catalog?category=" + Uri.EscapeDataString(node.Id))">@node.Title</a> }

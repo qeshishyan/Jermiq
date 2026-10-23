@@ -22,15 +22,30 @@ public sealed class StaticContent(ContentLocalizer localizer)
         SiteJson.Deserialize<T>(File.ReadAllText(Path.Combine(environment.ContentRootPath, "SeedData", name + ".json")));
 }
 
-public sealed class CatalogService(AppDbContext db, ContentLocalizer localizer)
+public sealed class CatalogService(AppDbContext db, ContentLocalizer localizer, StoreCatalogService store)
 {
-    public async Task<List<Product>> GetProductsAsync(CancellationToken ct = default, bool localized = true) =>
-        (await db.Products.AsNoTracking().OrderBy(x => x.UpdatedAt).ThenBy(x => x.Slug).ToListAsync(ct))
-        .Select(x => Localize(ReadProduct(x), localized)).ToList();
+    public async Task<List<Product>> GetProductsAsync(CancellationToken ct = default, bool localized = true)
+    {
+        var products = (await db.Products.AsNoTracking().OrderBy(x => x.UpdatedAt).ThenBy(x => x.Slug).ToListAsync(ct))
+            .Select(ReadProduct).ToList();
+        if (!localized) return products;
+        var config = await store.GetAsync(ct);
+        var categoryIds = config.Categories.Select(x => x.Id).ToHashSet(StringComparer.Ordinal);
+        var modelIds = config.EquipmentModels.Select(x => x.Id).ToHashSet(StringComparer.Ordinal);
+        products = products.Where(x => x.Published && (x.CatalogCategoryId.Length == 0 || categoryIds.Contains(x.CatalogCategoryId))).ToList();
+        var slugs = products.Select(x => x.Slug).ToHashSet(StringComparer.Ordinal);
+        foreach (var product in products)
+        {
+            product.CompatibleModelIds = product.CompatibleModelIds.Where(modelIds.Contains).ToList();
+            product.RelatedProductSlugs = product.RelatedProductSlugs.Where(slugs.Contains).ToList();
+            product.AlternativeProductSlugs = product.AlternativeProductSlugs.Where(slugs.Contains).ToList();
+            product.BundleProductSlugs = product.BundleProductSlugs.Where(slugs.Contains).ToList();
+        }
+        return products.Select(x => Localize(x, true)).ToList();
+    }
     public async Task<Product?> GetProductAsync(string slug, CancellationToken ct = default)
     {
-        var row = await db.Products.AsNoTracking().SingleOrDefaultAsync(x => x.Slug == slug, ct);
-        return row is null ? null : Localize(ReadProduct(row), true);
+        return (await GetProductsAsync(ct)).SingleOrDefault(x => x.Slug == slug);
     }
     private static Product ReadProduct(ProductRecord row)
     {
@@ -82,5 +97,6 @@ public static class DatabaseInitializer
         await db.SaveChangesAsync();
         await UploadedCatalogImport.ApplyAsync(db, environment, scope.ServiceProvider.GetRequiredService<FileStorage>());
         await RealCatalogImport.ApplyAsync(db, environment);
+        await StoreCatalogService.InitializeAsync(db, environment);
     }
 }

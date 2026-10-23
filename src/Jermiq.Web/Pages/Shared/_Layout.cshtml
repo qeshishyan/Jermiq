@@ -1,8 +1,10 @@
 @inject CatalogService Catalog
 @inject SeoService Seo
+@inject StoreCatalogService StoreCatalog
 @inject Microsoft.AspNetCore.Antiforgery.IAntiforgery Antiforgery
 @{
     var settings = await Catalog.GetSettingsAsync(Context.RequestAborted);
+    var store = await StoreCatalog.GetAsync(Context.RequestAborted);
     var title = ViewData["Title"] as string ?? L["Ջերմիք"];
     var description = ViewData["Description"] as string ?? L["Ջրատաքացուցիչներ, պահեստամասեր և մասնագիտական սպասարկում։"];
     var canonical = Seo.PageUrl(ViewData["Canonical"] as string ?? Context.Request.Path.Value ?? "/");
@@ -39,24 +41,27 @@
     <link rel="stylesheet" href="/css/site.css" asp-append-version="true" />
     <link rel="stylesheet" href="/css/app.css" asp-append-version="true" />
     <link rel="stylesheet" href="/css/navigation.css" asp-append-version="true" />
+    <link rel="stylesheet" href="/css/storefront.css" asp-append-version="true" />
+    <link rel="stylesheet" href="/css/commerce.css" asp-append-version="true" />
     <script type="application/ld+json">@Html.Raw(SiteJson.Serialize(Seo.Organization(settings)))</script>
     @if (ViewData["StructuredData"] is object schema)
     { <script type="application/ld+json">@Html.Raw(SiteJson.Serialize(schema))</script> }
     @if (ViewData["BreadcrumbData"] is object crumbs)
     { <script type="application/ld+json">@Html.Raw(SiteJson.Serialize(crumbs))</script> }
-    @if (path == "/") { <link rel="preload" as="image" href="/images/hero.webp" /> }
+    @if (path == "/") { <link rel="preload" as="image" href="@store.Home.HeroImage" /> }
 </head>
 <body>
 <a href="#main" class="skip-link">@L["Անցնել բովանդակությանը"]</a>
-<div class="topbar"><div class="container"><span>@L["Ջրատաքացուցիչներ · Պահեստամասեր · Սպասարկում"]</span><span class="topbar-assurance"><i data-icon="shield"></i>@L["Երաշխիք նաև մեր կատարած աշխատանքի համար"]</span></div></div>
+<div class="topbar"><div class="container"><span>@(settings.Address.Length > 0 ? settings.Address : L["Ջրատաքացուցիչներ · Պահեստամասեր · Սպասարկում"])</span><div class="store-utility-links"><a href="/delivery">@L["Առաքում"]</a><a href="/payment">@L["Վճարում"]</a><a href="/warranty">@L["Երաշխիք"]</a><a href="/contact">@L["Կապ"]</a></div></div></div>
 <header class="header">
     <div class="container header-main">
         <partial name="_Brand" />
-        <form class="search-box" action="/catalog" method="get"><input type="hidden" name="lang" value="@L.Language" /><input name="q" aria-label="@L["Որոնել ապրանք կամ պահեստամաս"]" placeholder="@L["Որոնել ապրանք, մոդել կամ պահեստամաս…"]" /><button aria-label="@L["Որոնել"]" type="submit"><i data-icon="search"></i></button></form>
+        <form class="search-box" action="/catalog" method="get"><input type="hidden" name="lang" value="@L.Language" /><input name="q" type="search" maxlength="200" aria-label="@L["Որոնել ապրանք կամ պահեստամաս"]" placeholder="@L["Որոնել մաս, մոդել կամ արտիկուլ…"]" /><button aria-label="@L["Որոնել"]" type="submit"><i data-icon="search"></i></button></form>
         <div class="header-actions">
             <partial name="_LanguageSwitch" />
-            <button type="button" class="callback-button desktop-contact" data-request="callback"><span class="callback-icon"><i data-icon="phone"></i></span><span>@L["Պատվիրել հետադարձ զանգ"]</span><span class="callback-arrow" aria-hidden="true"><i data-icon="arrow-up-right"></i></span></button>
-            <button class="icon-btn header-cart" type="button" data-action="cart" aria-label="@L["Պատվերի ցանկ"]"><i data-icon="bag"></i><span class="count" id="cart-count" hidden></span></button>
+            <a class="store-header-action" href="/favorites"><span class="store-action-icon"><i data-icon="heart"></i><span class="count" id="favorites-count" hidden></span></span><span>@L["Ընտրյալներ"]</span></a>
+            <a class="store-header-action" href="/compare"><span class="store-action-icon"><i data-icon="scale"></i></span><span>@L["Համեմատել"]</span></a>
+            <a class="store-header-action" href="/cart"><span class="store-action-icon"><i data-icon="bag"></i><span class="count" id="cart-count" hidden></span></span><span>@L["Զամբյուղ"]</span></a>
             <button class="icon-btn mobile-menu" type="button" id="menu-toggle" aria-expanded="false" aria-controls="main-nav" aria-label="@L["Բացել մենյուն"]" data-open-label="@L["Բացել մենյուն"]" data-close-label="@L["Փակել մենյուն"]"><span class="menu-glyph" aria-hidden="true"></span></button>
         </div>
     </div>
@@ -64,11 +69,11 @@
         <nav id="main-nav" aria-label="@L["Հիմնական մենյու"]" class="container nav">
             <div class="nav-mobile-heading"><span>@L["Հիմնական մենյու"]</span><span>JERMIQ</span></div>
             <div class="nav-links">
+                <details class="store-mega"><summary><i data-icon="package"></i>@L["Կատեգորիաներ"] <span aria-hidden="true">⌄</span></summary><div class="store-mega-panel">@foreach (var category in store.Categories.Where(x => x.ParentId.Length == 0).OrderBy(x => x.SortOrder)) { <div><a href="@("/catalog?category=" + Uri.EscapeDataString(category.Id))"><strong>@category.Title</strong></a>@foreach (var child in store.Categories.Where(x => x.ParentId == category.Id).OrderBy(x => x.SortOrder)) { <a href="@("/catalog?category=" + Uri.EscapeDataString(child.Id))">@child.Title</a> }</div> }</div></details>
                 @foreach (var item in new[] {
-                    (Url: "/catalog", Label: "Ջրատաքացուցիչներ", Icon: "droplets", Featured: true),
-                    (Url: "/parts", Label: "Պահեստամասեր", Icon: "package", Featured: true),
+                    (Url: "/catalog", Label: "Ամբողջ տեսականին", Icon: "droplets", Featured: false),
+                    (Url: "/selection", Label: "Ընտրել մոդելով", Icon: "search-check", Featured: true),
                     (Url: "/services", Label: "Սպասարկում", Icon: "wrench", Featured: false),
-                    (Url: "/warranty", Label: "Երաշխիք", Icon: "shield", Featured: false),
                     (Url: "/guide", Label: "Օգտակար նյութեր", Icon: "book", Featured: false),
                     (Url: "/contact", Label: "Կապ", Icon: "message", Featured: false) })
                 {
@@ -88,7 +93,7 @@
 </header>
 
 <main id="main">@RenderBody()</main>
-<footer class="footer"><div class="container"><div class="footer-grid"><div><partial name="_Brand" /><p>@L["Տաք ջրի հարցերով՝ ընտրությունից մինչև սպասարկում։ Օգնում ենք ընտրել սարքը, գտնել պահեստամասը և պահպանել սարքի աշխատանքը։"]</p></div><div><h3>@L["Տեսականի և ծառայություններ"]</h3><div class="footer-links"><a href="/catalog">@L["Ջրատաքացուցիչներ"]</a><a href="/parts">@L["Պահեստամասեր"]</a><a href="/services">@L["Վերանորոգում և սպասարկում"]</a><a href="/warranty">@L["Երաշխիքային պայմաններ"]</a></div></div><div><h3>@L["Կապ մեզ հետ"]</h3><div class="footer-links">
+<footer class="footer"><div class="container"><div class="footer-grid"><div><partial name="_Brand" /><p>@L["Տաք ջրի հարցերով՝ ընտրությունից մինչև սպասարկում։ Օգնում ենք ընտրել սարքը, գտնել պահեստամասը և պահպանել սարքի աշխատանքը։"]</p></div><div><h3>@L["Տեսականի և ծառայություններ"]</h3><div class="footer-links"><a href="/catalog?category=water-heaters">@L["Ջրատաքացուցիչներ"]</a><a href="/parts">@L["Պահեստամասեր"]</a><a href="/selection">@L["Ընտրել մոդելով"]</a><a href="/services">@L["Վերանորոգում և սպասարկում"]</a><a href="/warranty">@L["Երաշխիքային պայմաններ"]</a><a href="/delivery">@L["Առաքում"]</a><a href="/payment">@L["Վճարում"]</a><a href="/about">@L["Ջերմիքի մասին"]</a></div></div><div><h3>@L["Կապ մեզ հետ"]</h3><div class="footer-links">
     @if (settings.Phone.Length > 0) { <a href="tel:@System.Text.RegularExpressions.Regex.Replace(settings.Phone, "[^+0-9]", "")">@settings.Phone</a> }
     @if (settings.Email.Length > 0) { <a href="mailto:@settings.Email">@settings.Email</a> }
     @if (settings.Address.Length > 0) { <span>@settings.Address</span> }
@@ -108,6 +113,7 @@
 <script type="application/json" id="site-settings">@Html.Raw(SiteJson.Serialize(settings))</script>
 <script type="application/json" id="site-translations">@Html.Raw(SiteJson.Serialize(L.ClientTexts))</script>
 <script src="/js/site.js" asp-append-version="true" defer></script>
+<script src="/js/storefront.js" asp-append-version="true" defer></script>
 @await RenderSectionAsync("Scripts", required: false)
 </body>
 </html>

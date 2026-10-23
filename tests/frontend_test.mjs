@@ -21,6 +21,7 @@ async function page(route, admin = false) {
   const dom = new JSDOM(html, { url: input.baseUrl + route, runScripts: 'outside-only', pretendToBeVisual: true });
   const w = dom.window;
   w.structuredClone = structuredClone;
+  w.matchMedia = query => ({ matches: !query.includes('max-width'), media: query, addEventListener() {}, removeEventListener() {} });
   for (const [key, value] of Object.entries(savedLocal)) w.localStorage.setItem(key, value);
   w.HTMLDialogElement.prototype.showModal = function () { this.open = true; };
   w.HTMLDialogElement.prototype.close = function () { this.open = false; this.dispatchEvent(new w.Event('close')); };
@@ -36,6 +37,7 @@ async function page(route, admin = false) {
     return rawFetch(url, options);
   };
   w.eval(fs.readFileSync(path.join(root, 'src/Jermiq.Web/wwwroot/js/site.js'), 'utf8'));
+  w.eval(fs.readFileSync(path.join(root, 'src/Jermiq.Web/wwwroot/js/storefront.js'), 'utf8'));
   if (admin) w.eval(fs.readFileSync(path.join(root, 'src/Jermiq.Web/wwwroot/js/admin.js'), 'utf8'));
   return dom;
 }
@@ -55,7 +57,7 @@ click('[data-action="cart-plus"]');
 await waitUntil(() => d.querySelector('#cart-count').textContent === '2');
 check('Cart quantity increases', d.querySelector('.quantity span').textContent === '2');
 click('[data-action="cart-submit"]');
-check('Order form receives the selected quantity', d.querySelector('#site-dialog [name="details"]').value.includes('× 2'));
+check('Structured checkout retains the selected quantity', !!d.querySelector('#site-dialog .store-checkout-form') && JSON.parse(w.localStorage.getItem('jermiq.cart'))[0].quantity === 2);
 click('[data-action="dialog-close"]');
 const compare = [...d.querySelectorAll('[data-action="compare-toggle"]')];
 compare.slice(0, 4).forEach(el => el.click());
@@ -66,26 +68,36 @@ check('Comparison includes all three product columns', d.querySelectorAll('.comp
 click('[data-action="compare-request"]');
 check('Comparison consultation passes product details', d.querySelector('#site-dialog [name="details"]').value.length > 0);
 click('[data-action="dialog-close"]');
+async function navigate(route) {
+  savedLocal = Object.fromEntries(Object.keys(w.localStorage).map(key => [key, w.localStorage.getItem(key)]));
+  w.close(); dom = await page(route); w = dom.window; d = w.document;
+}
+await navigate('/');
 click('[data-action="chooser"]');
 for (let i = 0; i < 3; i++) { click('[data-action="choice-select"]'); click('[data-action="choice-next"]'); }
 check('Chooser reaches its result', d.querySelector('#dialog-title').textContent === 'Ձեր ընտրության ուղղությունը');
 click('[data-action="choice-request"]');
 check('Chooser result is passed into the request', d.querySelector('#site-dialog [name="details"]').value.includes('Ընտանիք՝'));
 click('[data-action="dialog-close"]');
-const search = d.querySelector('#catalog-query'); search.value = 'no-such-product'; search.dispatchEvent(new w.Event('input'));
-check('Search displays the empty state', !d.querySelector('#catalog-empty').hidden && d.querySelectorAll('#catalog-grid .product').length === 0);
-click('[data-action="catalog-reset"]');
-search.value = 'silent 2000 aquatherm'; search.dispatchEvent(new w.Event('input'));
-check('Client keyword search agrees with server across fields', d.querySelectorAll('#catalog-grid .product').length === 1 && d.querySelector('#catalog-grid').textContent.includes('QA Product'));
-click('[data-action="catalog-reset"]');
-check('Reset restores all ten heaters', d.querySelectorAll('#catalog-grid .product').length === 10);
-const volumeFilter = d.querySelector('#catalog-volume'); volumeFilter.value = '80'; volumeFilter.dispatchEvent(new w.Event('change'));
-check('Selected volume is reflected in results and removable chip', d.querySelectorAll('#catalog-grid .product').length === 2 && !!d.querySelector('[data-clear-filter="catalog-volume"]') && !d.querySelector('#catalog-reset-top').hidden);
-click('[data-clear-filter="catalog-volume"]');
-check('Removing a filter chip restores the catalog and focus', volumeFilter.value === 'all' && d.querySelectorAll('#catalog-grid .product').length === 10 && d.activeElement === volumeFilter);
-d.querySelector('#catalog-sort').value = 'price'; d.querySelector('#catalog-sort').dispatchEvent(new w.Event('change'));
-click('#catalog-reset-top');
-check('Clear filters restores default sorting and removes all chips', d.querySelector('#catalog-sort').value === 'default' && !d.querySelector('#catalog-active-filters').children.length && d.querySelector('#catalog-reset-top').hidden);
+await navigate('/catalog?q=no-such-product');
+check('Server search displays a useful empty state', !!d.querySelector('.store-catalog-results .store-empty') && d.querySelectorAll('.store-product-grid .product').length === 0);
+await navigate('/catalog?q=silent+2000+aquatherm');
+check('Search query is preserved in filter form', d.querySelector('.store-filter-form [name="q"]').value === 'silent 2000 aquatherm');
+check('Keyword search returns the same filtered product across fields', d.querySelectorAll('.store-product-grid .product').length === 1 && d.querySelector('.store-product-grid').textContent.includes('QA Product'));
+await navigate(d.querySelector('.store-reset').getAttribute('href'));
+const publicProducts = (await (await rawFetch('/api/catalog')).json()).products;
+check('Reset restores the complete paginated catalog', Number(d.querySelector('#store-result-count strong').textContent) === publicProducts.length && d.querySelectorAll('.store-product-grid .product').length === Math.min(12, publicProducts.length));
+const selectedBrand = publicProducts.find(p => p.brand)?.brand;
+await navigate('/catalog?brand=' + encodeURIComponent(selectedBrand));
+const visibleProducts = [...d.querySelectorAll('.store-product-grid [data-product]')].map(el => JSON.parse(el.dataset.product));
+check('Selected brand is reflected in results and removable chip', d.querySelector('.store-filter-form [name="brand"]').value === selectedBrand && visibleProducts.length > 0 && visibleProducts.every(p => p.brand === selectedBrand) && [...d.querySelectorAll('.store-active-filters a')].some(el => el.textContent.includes(selectedBrand)));
+await navigate([...d.querySelectorAll('.store-active-filters a')].find(el => el.textContent.includes(selectedBrand)).getAttribute('href'));
+check('Removing a filter chip restores the full result count', d.querySelector('.store-filter-form [name="brand"]').value === '' && Number(d.querySelector('#store-result-count strong').textContent) === publicProducts.length);
+await navigate('/catalog?sort=price');
+const sortedPrices = [...d.querySelectorAll('.store-product-grid [data-product]')].map(el => JSON.parse(el.dataset.product).price ?? Infinity);
+check('Server sorting preserves selected control and price order', d.querySelector('#store-sort').value === 'price' && sortedPrices.every((value, index) => index === 0 || value >= sortedPrices[index - 1]));
+await navigate(d.querySelector('.store-reset').getAttribute('href'));
+check('Clear filters restores default sorting and removes chips', d.querySelector('#store-sort').value === 'popular' && !d.querySelector('.store-active-filters'));
 
 click('[data-request="service"]');
 check('Service form supports a second technical-label photo', !d.querySelector('#site-dialog [name="attachment2"]').disabled && d.querySelector('#site-dialog .photo-guide').textContent.includes('3–5'));

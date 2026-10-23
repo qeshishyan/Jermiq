@@ -32,7 +32,7 @@ async function page(route, admin = false) {
   return dom;
 }
 for (const [language, cartTitle, success] of [['en', 'Your order list', 'Your request has been registered'], ['ru', 'Ваш список заказа', 'Ваша заявка зарегистрирована']]) {
-  const dom = await page('/catalog?lang=' + language), w = dom.window, d = w.document;
+  const dom = await page('/?lang=' + language), w = dom.window, d = w.document;
   d.querySelector('[data-action="add-cart"]').click(); await wait(() => d.querySelector('#site-dialog').open);
   check(language + ' translated cart', d.querySelector('#dialog-title').textContent === cartTitle);
   check(language + ' cart links retain language', d.querySelector('a[href*="lang=' + language + '"]'));
@@ -125,7 +125,8 @@ d.querySelector('#product-category-filter').value = 'all'; d.querySelector('#pro
 
 click('[data-tab="translations"]'); await wait(() => d.querySelectorAll('.translation-row').length > 0 && !d.querySelector('#translations-save').disabled);
 check('CMS has editable fields in all languages', d.querySelectorAll('.translation-row')[0].querySelectorAll('textarea').length === 3);
-const search = d.querySelector('#translation-search'); search.value = 'Ձեր տան տաք ջրի համար'; search.dispatchEvent(new w.Event('input'));
+const homepageConfig = await (await raw('/api/admin/store-catalog')).json();
+const search = d.querySelector('#translation-search'); search.value = homepageConfig.home.eyebrow; search.dispatchEvent(new w.Event('input'));
 const translation = d.querySelector('.translation-row textarea[lang="en"]'); translation.value = 'Office UI translated hero'; translation.dispatchEvent(new w.Event('input', { bubbles: true }));
 click('#translations-save'); await wait(() => !d.querySelector('#translations-save').disabled && d.querySelector('#admin-notice').textContent.includes('Translations saved'));
 check('CMS translation saves through the UI', (await (await raw('/?lang=en')).text()).includes('Office UI translated hero'));

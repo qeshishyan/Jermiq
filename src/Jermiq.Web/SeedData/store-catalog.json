@@ -1,0 +1,649 @@
+{
+  "revision": 0,
+  "categories": [
+    {
+      "id": "water-heaters",
+      "parentId": "",
+      "title": "Ջրատաքացուցիչներ",
+      "description": "Ջրատաքացուցիչներ տան և աշխատանքի համար։",
+      "image": "/images/hero.webp",
+      "sortOrder": 0,
+      "published": true
+    },
+    {
+      "id": "water-heater-parts",
+      "parentId": "",
+      "title": "Ջրատաքացուցիչների պահեստամասեր",
+      "description": "ՏԷՆ-եր, անոդներ, թերմոստատներ և այլ պահեստամասեր։",
+      "image": "/images/parts.webp",
+      "sortOrder": 10,
+      "published": true
+    },
+    {
+      "id": "water-heater-elements",
+      "parentId": "water-heater-parts",
+      "title": "ՏԷՆ-եր",
+      "description": "",
+      "image": "/images/parts.webp",
+      "sortOrder": 20,
+      "published": true
+    },
+    {
+      "id": "water-heater-anodes",
+      "parentId": "water-heater-parts",
+      "title": "Մագնեզիումի անոդներ",
+      "description": "",
+      "image": "/images/parts.webp",
+      "sortOrder": 30,
+      "published": true
+    },
+    {
+      "id": "water-heater-thermostats",
+      "parentId": "water-heater-parts",
+      "title": "Թերմոստատներ",
+      "description": "",
+      "image": "/images/parts.webp",
+      "sortOrder": 40,
+      "published": true
+    },
+    {
+      "id": "water-heater-gaskets",
+      "parentId": "water-heater-parts",
+      "title": "Միջադիրներ",
+      "description": "",
+      "image": "/images/parts.webp",
+      "sortOrder": 50,
+      "published": true
+    },
+    {
+      "id": "water-heater-flanges",
+      "parentId": "water-heater-parts",
+      "title": "Ֆլանեցներ և կոլբաներ",
+      "description": "",
+      "image": "/images/parts.webp",
+      "sortOrder": 60,
+      "published": true
+    },
+    {
+      "id": "water-heater-boards",
+      "parentId": "water-heater-parts",
+      "title": "Կառավարման պլատաներ",
+      "description": "",
+      "image": "/images/parts.webp",
+      "sortOrder": 70,
+      "published": true
+    },
+    {
+      "id": "water-heater-valves",
+      "parentId": "water-heater-parts",
+      "title": "Փականներ",
+      "description": "",
+      "image": "/images/parts.webp",
+      "sortOrder": 80,
+      "published": true
+    },
+    {
+      "id": "water-heater-accessories",
+      "parentId": "water-heater-parts",
+      "title": "Աքսեսուարներ",
+      "description": "",
+      "image": "/images/parts.webp",
+      "sortOrder": 90,
+      "published": true
+    },
+    {
+      "id": "water-heater-buttons",
+      "parentId": "water-heater-parts",
+      "title": "Կոճակներ",
+      "description": "",
+      "image": "/images/parts.webp",
+      "sortOrder": 100,
+      "published": true
+    },
+    {
+      "id": "water-heater-u-elements",
+      "parentId": "water-heater-parts",
+      "title": "U-աձև ՏԷՆ-եր",
+      "description": "",
+      "image": "/images/parts.webp",
+      "sortOrder": 110,
+      "published": true
+    },
+    {
+      "id": "water-heater-kits",
+      "parentId": "water-heater-parts",
+      "title": "Հավաքածուներ",
+      "description": "",
+      "image": "/images/parts.webp",
+      "sortOrder": 120,
+      "published": true
+    },
+    {
+      "id": "electric-boiler-parts",
+      "parentId": "",
+      "title": "Էլեկտրակաթսաների պահեստամասեր",
+      "description": "Տաքացման և կառավարման հանգույցների մասեր։",
+      "image": "/images/parts.webp",
+      "sortOrder": 130,
+      "published": true
+    },
+    {
+      "id": "boiler-elements",
+      "parentId": "electric-boiler-parts",
+      "title": "ՏԷՆ-եր",
+      "description": "",
+      "image": "/images/parts.webp",
+      "sortOrder": 140,
+      "published": true
+    },
+    {
+      "id": "boiler-thermostats",
+      "parentId": "electric-boiler-parts",
+      "title": "Թերմոստատներ և սենսորներ",
+      "description": "",
+      "image": "/images/parts.webp",
+      "sortOrder": 150,
+      "published": true
+    },
+    {
+      "id": "boiler-gaskets",
+      "parentId": "electric-boiler-parts",
+      "title": "Միջադիրներ",
+      "description": "",
+      "image": "/images/parts.webp",
+      "sortOrder": 160,
+      "published": true
+    },
+    {
+      "id": "boiler-electronics",
+      "parentId": "electric-boiler-parts",
+      "title": "Էլեկտրոնիկա",
+      "description": "",
+      "image": "/images/parts.webp",
+      "sortOrder": 170,
+      "published": true
+    },
+    {
+      "id": "boiler-tubes",
+      "parentId": "electric-boiler-parts",
+      "title": "Խողովակներ",
+      "description": "",
+      "image": "/images/parts.webp",
+      "sortOrder": 180,
+      "published": true
+    },
+    {
+      "id": "boiler-contactors",
+      "parentId": "electric-boiler-parts",
+      "title": "Կոնտակտորներ",
+      "description": "",
+      "image": "/images/parts.webp",
+      "sortOrder": 190,
+      "published": true
+    },
+    {
+      "id": "boiler-terminals",
+      "parentId": "electric-boiler-parts",
+      "title": "Կլեմային բլոկներ",
+      "description": "",
+      "image": "/images/parts.webp",
+      "sortOrder": 200,
+      "published": true
+    },
+    {
+      "id": "boiler-exchangers",
+      "parentId": "electric-boiler-parts",
+      "title": "Ջերմափոխանակիչներ",
+      "description": "",
+      "image": "/images/parts.webp",
+      "sortOrder": 210,
+      "published": true
+    },
+    {
+      "id": "boiler-valves",
+      "parentId": "electric-boiler-parts",
+      "title": "Փականներ",
+      "description": "",
+      "image": "/images/parts.webp",
+      "sortOrder": 220,
+      "published": true
+    },
+    {
+      "id": "boiler-expansion-tanks",
+      "parentId": "electric-boiler-parts",
+      "title": "Ընդարձակման բաքեր",
+      "description": "",
+      "image": "/images/parts.webp",
+      "sortOrder": 230,
+      "published": true
+    },
+    {
+      "id": "boiler-pumps",
+      "parentId": "electric-boiler-parts",
+      "title": "Պոմպեր",
+      "description": "",
+      "image": "/images/parts.webp",
+      "sortOrder": 240,
+      "published": true
+    },
+    {
+      "id": "boiler-other",
+      "parentId": "electric-boiler-parts",
+      "title": "Այլ պահեստամասեր",
+      "description": "",
+      "image": "/images/parts.webp",
+      "sortOrder": 250,
+      "published": true
+    },
+    {
+      "id": "sauna-parts",
+      "parentId": "",
+      "title": "Սաունաների պահեստամասեր",
+      "description": "ՏԷՆ-եր և ժամանակաչափեր էլեկտրաքարավառարանների համար։",
+      "image": "/images/parts.webp",
+      "sortOrder": 260,
+      "published": true
+    },
+    {
+      "id": "sauna-elements",
+      "parentId": "sauna-parts",
+      "title": "ՏԷՆ-եր",
+      "description": "",
+      "image": "/images/parts.webp",
+      "sortOrder": 270,
+      "published": true
+    },
+    {
+      "id": "sauna-timers",
+      "parentId": "sauna-parts",
+      "title": "Ժամանակաչափեր",
+      "description": "",
+      "image": "/images/parts.webp",
+      "sortOrder": 280,
+      "published": true
+    },
+    {
+      "id": "towel-warmer-parts",
+      "parentId": "",
+      "title": "Սրբիչաչորացուցիչների պահեստամասեր",
+      "description": "Տաքացնող տարրեր և կառավարման հանգույցներ։",
+      "image": "/images/parts.webp",
+      "sortOrder": 290,
+      "published": true
+    },
+    {
+      "id": "towel-warmer-elements",
+      "parentId": "towel-warmer-parts",
+      "title": "ՏԷՆ-եր",
+      "description": "",
+      "image": "/images/parts.webp",
+      "sortOrder": 300,
+      "published": true
+    },
+    {
+      "id": "towel-warmer-controls",
+      "parentId": "towel-warmer-parts",
+      "title": "Ջերմակարգավորիչներ",
+      "description": "",
+      "image": "/images/parts.webp",
+      "sortOrder": 310,
+      "published": true
+    },
+    {
+      "id": "towel-warmer-covers",
+      "parentId": "towel-warmer-parts",
+      "title": "Քողարկող տարրեր",
+      "description": "",
+      "image": "/images/parts.webp",
+      "sortOrder": 320,
+      "published": true
+    },
+    {
+      "id": "washing-machine-parts",
+      "parentId": "",
+      "title": "Լվացքի մեքենաների պահեստամասեր",
+      "description": "ՏԷՆ-եր, պոմպեր և շարժիչի խոզանակներ։",
+      "image": "/images/parts.webp",
+      "sortOrder": 330,
+      "published": true
+    },
+    {
+      "id": "washing-machine-elements",
+      "parentId": "washing-machine-parts",
+      "title": "ՏԷՆ-եր",
+      "description": "",
+      "image": "/images/parts.webp",
+      "sortOrder": 340,
+      "published": true
+    },
+    {
+      "id": "washing-machine-pumps",
+      "parentId": "washing-machine-parts",
+      "title": "Պոմպեր",
+      "description": "",
+      "image": "/images/parts.webp",
+      "sortOrder": 350,
+      "published": true
+    },
+    {
+      "id": "washing-machine-brushes",
+      "parentId": "washing-machine-parts",
+      "title": "Շարժիչի խոզանակներ",
+      "description": "",
+      "image": "/images/parts.webp",
+      "sortOrder": 360,
+      "published": true
+    },
+    {
+      "id": "oven-parts",
+      "parentId": "",
+      "title": "Ջեռոցների և սալիկների պահեստամասեր",
+      "description": "ՏԷՆ-եր և թերմոստատներ էլեկտրական սարքերի համար։",
+      "image": "/images/parts.webp",
+      "sortOrder": 370,
+      "published": true
+    },
+    {
+      "id": "oven-elements",
+      "parentId": "oven-parts",
+      "title": "ՏԷՆ-եր",
+      "description": "",
+      "image": "/images/parts.webp",
+      "sortOrder": 380,
+      "published": true
+    },
+    {
+      "id": "oven-thermostats",
+      "parentId": "oven-parts",
+      "title": "Թերմոստատներ",
+      "description": "",
+      "image": "/images/parts.webp",
+      "sortOrder": 390,
+      "published": true
+    },
+    {
+      "id": "catering-parts",
+      "parentId": "",
+      "title": "Հանրային սննդի սարքավորումների մասեր",
+      "description": "Պահեստամասեր մասնագիտական խոհանոցի համար։",
+      "image": "/images/parts.webp",
+      "sortOrder": 400,
+      "published": true
+    },
+    {
+      "id": "catering-abat",
+      "parentId": "catering-parts",
+      "title": "Abat",
+      "description": "",
+      "image": "/images/parts.webp",
+      "sortOrder": 410,
+      "published": true
+    },
+    {
+      "id": "catering-boilers",
+      "parentId": "catering-parts",
+      "title": "Կերակրեփ կաթսաներ",
+      "description": "",
+      "image": "/images/parts.webp",
+      "sortOrder": 420,
+      "published": true
+    },
+    {
+      "id": "catering-cabinets",
+      "parentId": "catering-parts",
+      "title": "Ջերմային պահարաններ",
+      "description": "",
+      "image": "/images/parts.webp",
+      "sortOrder": 430,
+      "published": true
+    },
+    {
+      "id": "catering-combi-ovens",
+      "parentId": "catering-parts",
+      "title": "Կոնվեկցիոն շոգեփեր",
+      "description": "",
+      "image": "/images/parts.webp",
+      "sortOrder": 440,
+      "published": true
+    },
+    {
+      "id": "catering-dishwashers",
+      "parentId": "catering-parts",
+      "title": "Աման լվացող մեքենաներ",
+      "description": "",
+      "image": "/images/parts.webp",
+      "sortOrder": 450,
+      "published": true
+    },
+    {
+      "id": "catering-cookers",
+      "parentId": "catering-parts",
+      "title": "Էլեկտրաեփ սարքեր",
+      "description": "",
+      "image": "/images/parts.webp",
+      "sortOrder": 460,
+      "published": true
+    },
+    {
+      "id": "catering-grills",
+      "parentId": "catering-parts",
+      "title": "Գրիլներ",
+      "description": "",
+      "image": "/images/parts.webp",
+      "sortOrder": 470,
+      "published": true
+    },
+    {
+      "id": "catering-water-boilers",
+      "parentId": "catering-parts",
+      "title": "Էլեկտրական ջրաեռուցիչներ",
+      "description": "",
+      "image": "/images/parts.webp",
+      "sortOrder": 480,
+      "published": true
+    },
+    {
+      "id": "catering-bain-marie",
+      "parentId": "catering-parts",
+      "title": "Մարմիտներ",
+      "description": "",
+      "image": "/images/parts.webp",
+      "sortOrder": 490,
+      "published": true
+    },
+    {
+      "id": "catering-fryers",
+      "parentId": "catering-parts",
+      "title": "Ֆրիտյուրներ",
+      "description": "",
+      "image": "/images/parts.webp",
+      "sortOrder": 500,
+      "published": true
+    },
+    {
+      "id": "catering-ranges",
+      "parentId": "catering-parts",
+      "title": "Արդյունաբերական սալիկներ",
+      "description": "",
+      "image": "/images/parts.webp",
+      "sortOrder": 510,
+      "published": true
+    },
+    {
+      "id": "radiator-parts",
+      "parentId": "",
+      "title": "Ռադիատորների պահեստամասեր",
+      "description": "Տաքացնող տարրեր ջեռուցման համակարգերի համար։",
+      "image": "/images/parts.webp",
+      "sortOrder": 520,
+      "published": true
+    },
+    {
+      "id": "radiator-elements",
+      "parentId": "radiator-parts",
+      "title": "ՏԷՆ-եր",
+      "description": "",
+      "image": "/images/parts.webp",
+      "sortOrder": 530,
+      "published": true
+    },
+    {
+      "id": "convector-parts",
+      "parentId": "",
+      "title": "Կոնվեկտորների պահեստամասեր",
+      "description": "ՏԷՆ-եր, թերմոստատներ և կառավարման մասեր։",
+      "image": "/images/parts.webp",
+      "sortOrder": 540,
+      "published": true
+    },
+    {
+      "id": "convector-elements",
+      "parentId": "convector-parts",
+      "title": "ՏԷՆ-եր",
+      "description": "",
+      "image": "/images/parts.webp",
+      "sortOrder": 550,
+      "published": true
+    },
+    {
+      "id": "convector-thermostats",
+      "parentId": "convector-parts",
+      "title": "Թերմոստատներ",
+      "description": "",
+      "image": "/images/parts.webp",
+      "sortOrder": 560,
+      "published": true
+    },
+    {
+      "id": "convector-electronics",
+      "parentId": "convector-parts",
+      "title": "Էլեկտրոնիկա",
+      "description": "",
+      "image": "/images/parts.webp",
+      "sortOrder": 570,
+      "published": true
+    },
+    {
+      "id": "convector-other",
+      "parentId": "convector-parts",
+      "title": "Այլ պահեստամասեր",
+      "description": "",
+      "image": "/images/parts.webp",
+      "sortOrder": 580,
+      "published": true
+    },
+    {
+      "id": "oil-heater-parts",
+      "parentId": "",
+      "title": "Յուղային տաքացուցիչների պահեստամասեր",
+      "description": "Տաքացնող տարրեր և համապատասխան մասեր։",
+      "image": "/images/parts.webp",
+      "sortOrder": 590,
+      "published": true
+    },
+    {
+      "id": "oil-heater-elements",
+      "parentId": "oil-heater-parts",
+      "title": "ՏԷՆ-եր",
+      "description": "",
+      "image": "/images/parts.webp",
+      "sortOrder": 600,
+      "published": true
+    },
+    {
+      "id": "flow-heater-parts",
+      "parentId": "",
+      "title": "Հոսքային ջրատաքացուցիչների պահեստամասեր",
+      "description": "ՏԷՆ-եր, սենսորներ, միջադիրներ և աքսեսուարներ։",
+      "image": "/images/parts.webp",
+      "sortOrder": 610,
+      "published": true
+    },
+    {
+      "id": "flow-heater-elements",
+      "parentId": "flow-heater-parts",
+      "title": "ՏԷՆ-եր",
+      "description": "",
+      "image": "/images/parts.webp",
+      "sortOrder": 620,
+      "published": true
+    },
+    {
+      "id": "flow-heater-sensors",
+      "parentId": "flow-heater-parts",
+      "title": "Սենսորներ",
+      "description": "",
+      "image": "/images/parts.webp",
+      "sortOrder": 630,
+      "published": true
+    },
+    {
+      "id": "flow-heater-gaskets",
+      "parentId": "flow-heater-parts",
+      "title": "Միջադիրներ",
+      "description": "",
+      "image": "/images/parts.webp",
+      "sortOrder": 640,
+      "published": true
+    },
+    {
+      "id": "flow-heater-accessories",
+      "parentId": "flow-heater-parts",
+      "title": "Աքսեսուարներ",
+      "description": "",
+      "image": "/images/parts.webp",
+      "sortOrder": 650,
+      "published": true
+    },
+    {
+      "id": "gas-equipment-parts",
+      "parentId": "",
+      "title": "Գազային սարքավորումների պահեստամասեր",
+      "description": "Թաղանթներ, կառավարման պլատաներ և այլ մասեր։",
+      "image": "/images/parts.webp",
+      "sortOrder": 660,
+      "published": true
+    },
+    {
+      "id": "gas-membranes",
+      "parentId": "gas-equipment-parts",
+      "title": "Թաղանթներ",
+      "description": "",
+      "image": "/images/parts.webp",
+      "sortOrder": 670,
+      "published": true
+    },
+    {
+      "id": "gas-boards",
+      "parentId": "gas-equipment-parts",
+      "title": "Կառավարման պլատաներ",
+      "description": "",
+      "image": "/images/parts.webp",
+      "sortOrder": 680,
+      "published": true
+    },
+    {
+      "id": "gas-other",
+      "parentId": "gas-equipment-parts",
+      "title": "Այլ պահեստամասեր",
+      "description": "",
+      "image": "/images/parts.webp",
+      "sortOrder": 690,
+      "published": true
+    }
+  ],
+  "equipmentModels": [],
+  "home": {
+    "eyebrow": "Պահեստամասեր · Սարքեր · Սպասարկում",
+    "title": "Ճիշտ պահեստամասը՝ ձեր սարքի համար",
+    "intro": "Գտեք անհրաժեշտ մասը կատեգորիայով կամ սարքի մոդելով։ Եթե վստահ չեք ընտրության հարցում, ուղարկեք լուսանկարը՝ համատեղելիությունը ճշտելու համար։",
+    "heroImage": "/images/parts.webp",
+    "photoHelpTitle": "Չե՞ք գտնում անհրաժեշտ պահեստամասը",
+    "photoHelpText": "Ուղարկեք սարքի պիտակի և հին պահեստամասի լուսանկարները, ինչպես նաև հիմնական չափերը։ Կօգնենք ստուգել համապատասխանությունը։",
+    "featuredTitle": "Առաջարկվող ապրանքներ",
+    "wholesaleTitle": "Վարպետների և գործընկերների համար",
+    "wholesaleText": "Դիմեք մեզ մասնագիտական համագործակցության և ձեր աշխատանքին անհրաժեշտ պահեստամասերի ընտրության համար։"
+  },
+  "paymentText": "Վճարման հասանելի եղանակը և վերջնական գումարը համաձայնեցնում ենք պատվերի հաստատման ժամանակ։ Մինչև վճարումը ճշտեք ապրանքի գինը, առկայությունն ու ստացման պայմանները։",
+  "aboutText": "Ջերմիք՝ ջրատաքացուցիչներ, պահեստամասեր և մասնագիտական սպասարկում։ Օգնում ենք ընտրել սարքը, ստուգել պահեստամասի համապատասխանությունը և կազմակերպել սպասարկումը։"
+}

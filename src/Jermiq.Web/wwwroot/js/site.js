@@ -33,7 +33,8 @@
     refresh: '<path d="M3 11a9 9 0 0 1 15-6l3 3M21 3v5h-5m5 5a9 9 0 0 1-15 6l-3-3M3 21v-5h5"/>',
     plus: '<path d="M12 5v14M5 12h14"/>',
     check: '<circle cx="12" cy="12" r="10"/><path d="m8 12 3 3 5-6"/>',
-    package: '<path d="m12 3 9 5v10l-9 5-9-5V8ZM3 8l9 5 9-5m-9 5v10M7 5.8l9 5"/>'
+    package: '<path d="m12 3 9 5v10l-9 5-9-5V8ZM3 8l9 5 9-5m-9 5v10M7 5.8l9 5"/>',
+    heart: '<path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1.1-1.1a5.5 5.5 0 0 0-7.8 7.8L12 21l8.8-8.6a5.5 5.5 0 0 0 0-7.8Z"/>'
   };
   function icons(root = document) {
     $$('[data-icon]', root).forEach(el => {
@@ -74,7 +75,7 @@
   dialog.addEventListener('close', () => document.body.classList.remove('modal-open'));
   dialog.addEventListener('click', e => { if (e.target === dialog) { const r = dialog.getBoundingClientRect(); if (e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom) closeDialog(); } });
   window.Jermiq = Object.freeze({ $, $$, escape, icons, api, toast, openDialog, closeDialog, t, link });
-  if ($('#admin-app')) { icons(); return; }
+  if ($('#admin-app') || document.body.classList.contains('office-body')) { icons(); return; }
   const titles = { service: t("Պատվիրել սպասարկում"), question: t("Գրեք ձեր հարցը"), part: t("Գտնենք ճիշտ պահեստամասը"), order: t("Ուղարկել պատվերի հայտ"), callback: t("Խնդրել հետադարձ զանգ") };
   function openRequest(spec) {
     if (!Object.hasOwn(titles, spec.kind)) return;
@@ -123,42 +124,101 @@
   $$('[data-product]').forEach(el => { const p = JSON.parse(el.dataset.product); products.set(p.slug, p); });
   const catalogData = $('#catalog-data'); if (catalogData) JSON.parse(catalogData.textContent).forEach(p => products.set(p.slug, p));
   function readLocal(key, fallback) { try { return JSON.parse(localStorage.getItem(key)) ?? fallback; } catch { return fallback; } }
-  let cart = readLocal('jermiq.cart', []), compared = readLocal('jermiq.compare', []);
-  cart = Array.isArray(cart) ? cart.filter(x => x && typeof x.slug === 'string').slice(0, 100).map(x => ({ slug: x.slug, quantity: Math.min(20, Math.max(1, Number(x.quantity) || 1)) })) : [];
+  let cart = readLocal('jermiq.cart', []), compared = readLocal('jermiq.compare', []), favorites = readLocal('jermiq.favorites', []);
+  cart = Array.isArray(cart) ? [...new Map(cart.filter(x => x && typeof x.slug === 'string').slice(0, 100).map(x => [x.slug, { slug: x.slug, quantity: Math.min(20, Math.max(1, Math.floor(Number(x.quantity)) || 1)) }])).values()] : [];
   compared = Array.isArray(compared) ? [...new Set(compared.filter(x => typeof x === 'string'))].slice(0, 3) : [];
-  function persist() { try { localStorage.setItem('jermiq.cart', JSON.stringify(cart)); localStorage.setItem('jermiq.compare', JSON.stringify(compared)); } catch { /* Private-mode navigation still works in this document. */ } updateCounts(); }
-  let catalogLoaded = false;
+  favorites = Array.isArray(favorites) ? [...new Set(favorites.filter(x => typeof x === 'string'))].slice(0, 200) : [];
+  function persist() { try { localStorage.setItem('jermiq.cart', JSON.stringify(cart)); localStorage.setItem('jermiq.compare', JSON.stringify(compared)); localStorage.setItem('jermiq.favorites', JSON.stringify(favorites)); } catch { /* Private-mode navigation still works in this document. */ } updateCounts(); }
+  let catalogLoaded = false, catalogLoading;
   async function ensureProducts() {
     if (catalogLoaded) return;
-    const data = await api('/api/catalog'); data.products.forEach(p => products.set(p.slug, p)); catalogLoaded = true;
-    cart = cart.filter(x => products.has(x.slug)); compared = compared.filter(x => products.has(x)); persist();
+    if (catalogLoading) return catalogLoading;
+    catalogLoading = (async () => {
+      const data = await api('/api/catalog'); products.clear(); data.products.forEach(p => products.set(p.slug, p)); catalogLoaded = true;
+      cart = cart.filter(x => products.has(x.slug)); compared = compared.filter(x => products.has(x)); favorites = favorites.filter(x => products.has(x)); persist();
+    })();
+    try { await catalogLoading; } finally { catalogLoading = null; }
   }
   function updateCounts() {
     const count = cart.reduce((sum, x) => sum + x.quantity, 0);
-    $('#cart-count').hidden = count === 0; $('#cart-count').textContent = count;
-    $('[data-action="cart"]').setAttribute('aria-label', `${escape(t("Պատվերի ցանկ՝"))} ${count} ${escape(t("ապրանք"))}`);
-    $('#compare-tray').hidden = compared.length === 0; $('#compare-count').textContent = `${compared.length} ${escape(t("ապրանք"))}`;
+    if ($('#cart-count')) { $('#cart-count').hidden = count === 0; $('#cart-count').textContent = count; }
+    $('[data-action="cart"]')?.setAttribute('aria-label', `${t("Պատվերի ցանկ՝")} ${count} ${t("ապրանք")}`);
+    if ($('#compare-tray')) $('#compare-tray').hidden = compared.length === 0;
+    if ($('#compare-count')) $('#compare-count').textContent = `${compared.length} ${t("ապրանք")}`;
+    if ($('#favorites-count')) { $('#favorites-count').hidden = !favorites.length; $('#favorites-count').textContent = favorites.length; }
     $$('[data-action="compare-toggle"]').forEach(el => {
       const selected = compared.includes(JSON.parse(el.closest('[data-product]').dataset.product).slug);
-      el.setAttribute('aria-pressed', String(selected)); $('span', el).textContent = selected ? t("Համեմատության մեջ է") : t("Համեմատել");
+      el.setAttribute('aria-pressed', String(selected)); if ($('span', el)) $('span', el).textContent = selected ? t("Համեմատության մեջ է") : t("Համեմատել");
     });
+    $$('[data-action="favorite-toggle"]').forEach(el => {
+      const selected = favorites.includes(JSON.parse(el.closest('[data-product]').dataset.product).slug);
+      el.setAttribute('aria-pressed', String(selected)); el.setAttribute('aria-label', t(selected ? 'Հեռացնել ընտրյալներից' : 'Ավելացնել ընտրյալներին'));
+    });
+  }
+  const savedRoot = $('[data-store-saved]');
+  function emptySaved(message) { return `<div class="empty-state">${icon('package')}<h2>${escape(t(message))}</h2><a href="${link('/catalog')}" class="btn">${escape(t('Տեսնել ապրանքները'))}</a></div>`; }
+  function cartContent() {
+    if (!cart.length) return emptySaved('Ցանկը դեռ դատարկ է');
+    const allPriced = cart.every(x => products.get(x.slug).price !== null && !products.get(x.slug).priceIsEstimate);
+    const total = cart.reduce((sum, x) => sum + (products.get(x.slug).price || 0) * x.quantity, 0);
+    return `<div class="store-cart-lines">${cart.map(x => { const p = products.get(x.slug); return `<div class="cart-row"><a class="store-cart-image" href="${link('/products/' + p.slug)}"><img src="${escape(p.image)}" alt="" width="80" height="80"></a><div><a href="${link('/products/' + p.slug)}"><strong>${escape(p.title)}</strong></a>${p.sku ? `<small>${escape(t('Արտիկուլ'))}: ${escape(p.sku)}</small>` : ''}<small>${p.price === null ? escape(t('Գինը՝ ճշտման ենթակա')) : price(p.price) + escape(t(' / հատ'))}${p.priceIsEstimate ? ` · ${escape(t('Կողմնորոշիչ գին'))}` : ''}</small>${p.stockQuantity === 0 ? `<small class="error-text">${escape(t('Առկայությունը պետք է ճշտել'))}</small>` : ''}</div><div class="quantity"><button type="button" data-action="cart-minus" data-slug="${escape(x.slug)}" aria-label="${escape(t('Պակասեցնել քանակը'))}">−</button><span>${x.quantity}</span><button type="button" data-action="cart-plus" data-slug="${escape(x.slug)}" aria-label="${escape(t('Ավելացնել քանակը'))}">+</button><button type="button" data-action="cart-remove" data-slug="${escape(x.slug)}" aria-label="${escape(t('Հեռացնել ապրանքը'))}">${icon('trash')}</button></div></div>`; }).join('')}</div><div class="store-cart-summary"><div><span>${escape(t(allPriced ? 'Ապրանքների արժեքը՝' : 'Հայտնի գների գումարը՝'))}</span><strong>${price(total)}</strong></div><p>${escape(t(allPriced ? 'Առաքումը համաձայնեցվում է առանձին։' : 'Ցանկում կան չհաստատված գներով ապրանքներ։ Ընդհանուր արժեքը կհամաձայնեցվի կապ հաստատելուց հետո։'))}</p><button type="button" class="btn" data-action="cart-submit">${escape(t('Ձևակերպել պատվերը'))}</button></div>`;
+  }
+  function compareContent() {
+    const list = compared.map(slug => products.get(slug)).filter(Boolean);
+    if (!list.length) return emptySaved('Ընտրեք ապրանքներ համեմատության համար։');
+    const fields = [[t('Գին'), p => p.price === null ? t('Կճշտվի') : price(p.price) + (p.priceIsEstimate ? ' · ' + t('Կողմնորոշիչ գին') : '')], [t('Արտիկուլ'), p => p.sku || '—'], [t('Արտադրող'), p => p.manufacturer || p.brand || '—'], [t('Մոդել'), p => p.model || '—'], [t('Տարողություն'), p => p.volume ? `${p.volume} ${t('լ')}` : '—'], [t('Առկայություն'), p => p.availability || '—']];
+    const keys = [...new Set(list.flatMap(p => Object.keys(p.specs || {})))];
+    keys.forEach(key => fields.push([key, p => p.specs?.[key] || '—']));
+    return `<div class="compare-table"><table><thead><tr><th>${escape(t('Տվյալ'))}</th>${list.map(p => `<th><a href="${link('/products/' + p.slug)}">${escape(p.title)}</a><button type="button" class="plain-button" data-action="compare-remove" data-slug="${escape(p.slug)}" aria-label="${escape(t('Հեռացնել ապրանքը'))}">×</button></th>`).join('')}</tr></thead><tbody>${fields.map(([label, getter]) => `<tr><th>${escape(label)}</th>${list.map(p => `<td>${escape(getter(p))}</td>`).join('')}</tr>`).join('')}</tbody></table></div><button type="button" class="btn mt-5" data-action="compare-request">${escape(t('Խորհրդակցել մասնագետի հետ'))}</button>`;
+  }
+  async function renderSaved() {
+    if (!savedRoot) return;
+    try {
+      await ensureProducts();
+      savedRoot.innerHTML = savedRoot.dataset.storeSaved === 'cart' ? cartContent() : savedRoot.dataset.storeSaved === 'compare' ? compareContent() : favorites.length ? `<div class="catalog-grid">${favorites.map(slug => productCard(products.get(slug))).join('')}</div>` : emptySaved('Ընտրյալների ցանկը դատարկ է');
+      icons(savedRoot); updateCounts();
+    } catch (err) { savedRoot.innerHTML = `<p class="error-text" role="alert">${escape(err.message)}</p><button type="button" class="btn" data-action="saved-retry">${escape(t('Փորձել կրկին'))}</button>`; }
   }
   async function showCart() {
     await ensureProducts();
-    if (!cart.length) return openDialog(t("Ձեր պատվերի ցանկը"), t("Ուղարկեք ցանկը՝ գինն ու առկայությունը համաձայնեցնելու համար։"), `<div class="empty-state">${icon('bag')}<h3>${escape(t("Ցանկը դեռ դատարկ է"))}</h3><p>${escape(t("Ընտրեք ապրանքները կատալոգից։"))}</p><a href="${link('/catalog')}" class="btn">${escape(t("Տեսնել ապրանքները"))}</a></div>`);
-    const allPriced = cart.every(x => products.get(x.slug).price !== null && !products.get(x.slug).priceIsEstimate);
-    const total = cart.reduce((sum, x) => sum + (products.get(x.slug).price || 0) * x.quantity, 0);
-    const rows = cart.map(x => { const p = products.get(x.slug); return `<div class="cart-row"><div><strong>${escape(p.title)}</strong><small>${p.price === null ? t("Գինը՝ ճշտման ենթակա") : price(p.price) + t(" / հատ")}${p.priceIsEstimate ? ` · ${escape(t("Կողմնորոշիչ գին"))}` : ''}</small></div><div class="quantity"><button type="button" data-action="cart-minus" data-slug="${escape(x.slug)}" aria-label="${escape(t("Պակասեցնել քանակը"))}">−</button><span>${x.quantity}</span><button type="button" data-action="cart-plus" data-slug="${escape(x.slug)}" aria-label="${escape(t("Ավելացնել քանակը"))}">+</button><button type="button" data-action="cart-remove" data-slug="${escape(x.slug)}" aria-label="${escape(t("Հեռացնել ապրանքը"))}">${icon('trash')}</button></div></div>`; }).join('');
-    openDialog(t("Ձեր պատվերի ցանկը"), t("Ուղարկեք ցանկը՝ գինն ու առկայությունը համաձայնեցնելու համար։"), `${rows}<div class="notice mt-4">${allPriced ? `${escape(t("Ապրանքների արժեքը՝"))} ${price(total)}։ ${escape(t("Առաքումը համաձայնեցվում է առանձին։"))}` : t("Ցանկում կան չհաստատված գներով ապրանքներ։ Ընդհանուր արժեքը կհամաձայնեցվի կապ հաստատելուց հետո։")}</div><button type="button" class="btn" data-action="cart-submit">${escape(t("Ուղարկել ցանկը"))}</button>`);
+    if (savedRoot?.dataset.storeSaved === 'cart') { await renderSaved(); return; }
+    openDialog(t('Ձեր պատվերի ցանկը'), t('Առաքումը համաձայնեցվում է առանձին։'), cartContent());
   }
   async function showCompare() {
     await ensureProducts();
-    const list = compared.map(slug => products.get(slug));
-    if (!list.length) return toast(t("Ընտրեք ապրանքներ համեմատության համար։"));
-    const fields = [[t("Գին"), p => p.price === null ? t("Կճշտվի") : price(p.price)], [t("Տարողություն"), p => p.volume ? `${p.volume} ${escape(t("լ"))}` : '—'], [t("Արտադրող"), p => p.brand], [t("Մոդել"), p => p.model], [t("Առկայություն"), p => p.availability]];
-    const table = `<div class="compare-table"><table><thead><tr><th>${escape(t("Տվյալ"))}</th>${list.map(p => `<th>${escape(p.title)}</th>`).join('')}</tr></thead><tbody>${fields.map(([label, getter]) => `<tr><th>${label}</th>${list.map(p => `<td>${escape(getter(p))}</td>`).join('')}</tr>`).join('')}</tbody></table></div><button type="button" class="btn mt-5" data-action="compare-request">${escape(t("Խորհրդակցել մասնագետի հետ"))}</button>`;
-    openDialog(t("Ապրանքների համեմատություն"), t("Համեմատեք տվյալները և ճշտեք ընտրությունը մասնագետի հետ։"), table, true);
+    if (savedRoot?.dataset.storeSaved === 'compare') { await renderSaved(); return; }
+    openDialog(t('Ապրանքների համեմատություն'), t('Համեմատեք տվյալները և ճշտեք ընտրությունը մասնագետի հետ։'), compareContent(), true);
   }
+  function checkout() {
+    if (!cart.length) return;
+    const field = (label, name, attrs = '') => `<label class="field">${escape(t(label))}<input name="${name}" ${attrs}></label>`;
+    const content = `<form class="store-checkout-form" data-request-id="${uuid()}"><div class="form-grid">${field('Անուն *', 'name', 'required minlength="2" maxlength="100" autocomplete="name"')}${field('Հեռախոս *', 'phone', 'type="tel" required maxlength="30" autocomplete="tel"')}${field('Էլ․ փոստ', 'email', 'type="email" maxlength="200" autocomplete="email"')}<label class="field">${escape(t('Ստացման եղանակ'))}<select name="deliveryMethod"><option value="pickup">${escape(t('Ինքնավերցում'))}</option><option value="delivery">${escape(t('Առաքում'))}</option></select></label><label class="field full" data-checkout-address hidden>${escape(t('Առաքման հասցե'))}<input name="address" maxlength="500" autocomplete="street-address"></label><label class="field full">${escape(t('Վճարման եղանակ'))}<select name="paymentMethod"><option value="manager">${escape(t('Համաձայնեցնել մենեջերի հետ'))}</option><option value="cash">${escape(t('Կանխիկ՝ ստացման պահին'))}</option></select></label><label class="field full">${escape(t('Լրացուցիչ տեղեկություններ'))}<textarea name="message" maxlength="3000"></textarea></label></div><label class="checkbox-line"><input name="consent" type="checkbox" required><span>${escape(t('Համաձայն եմ, որ իմ տվյալներն օգտագործվեն այս հայտի մշակման և ինձ հետ կապ հաստատելու համար։'))} <a class="text-link" href="${link('/privacy')}">${escape(t('Գաղտնիության պայմաններ'))}</a></span></label><p class="form-note">${escape(t('Առաքման արժեքն ու պատվերի վերջնական գումարը հաստատվում են մենեջերի հետ։ Այս քայլում վճարում չի գանձվում։'))}</p><p class="error-text" role="alert" hidden></p><button class="btn w-full" type="submit">${escape(t('Գրանցել պատվերը'))}</button></form>`;
+    openDialog(t('Ձևակերպել պատվերը'), t('Ստուգեք կոնտակտներն ու ստացման եղանակը։'), content);
+    const form = $('.store-checkout-form');
+    form.elements.deliveryMethod.addEventListener('change', () => {
+      const delivery = form.elements.deliveryMethod.value === 'delivery'; $('[data-checkout-address]', form).hidden = !delivery; form.elements.address.required = delivery;
+    });
+  }
+  document.addEventListener('submit', async event => {
+    const form = event.target; if (!form.matches('.store-checkout-form')) return;
+    event.preventDefault();
+    if (form.dataset.submitting || !form.reportValidity()) return;
+    form.dataset.submitting = 'true';
+    const button = $('button[type="submit"]', form), error = $('.error-text', form);
+    button.disabled = true; error.hidden = true;
+    try {
+      // Keep the same ID and payload on an ambiguous network retry. Editing means a new request.
+      const payload = { name: form.elements.name.value.trim(), phone: form.elements.phone.value.trim(), email: form.elements.email.value.trim(), address: form.elements.deliveryMethod.value === 'delivery' ? form.elements.address.value.trim() : '', deliveryMethod: form.elements.deliveryMethod.value, paymentMethod: form.elements.paymentMethod.value, message: form.elements.message.value.trim(), consent: form.elements.consent.checked, items: cart.map(x => ({ slug: x.slug, quantity: x.quantity })) };
+      const signature = JSON.stringify(payload);
+      if (form.dataset.signature && form.dataset.signature !== signature) form.dataset.requestId = uuid();
+      form.dataset.signature = signature;
+      const result = await api('/api/orders', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ requestId: form.dataset.requestId, ...payload }) });
+      cart = []; persist(); await renderSaved();
+      form.innerHTML = `<div class="success" role="status">${icon('check')}<h3>${escape(t('Պատվերը գրանցված է'))}</h3><p>${escape(t('Մենեջերը կկապվի ձեզ հետ՝ վերջնական գինն ու առաքումը հաստատելու համար։'))}</p><div class="reference">${escape(t('Պատվերի համարը՝'))} ${escape(result.id)}</div>${result.order?.subtotal != null ? `<p>${escape(t('Ապրանքների արժեքը՝'))} ${price(result.order.subtotal)}</p>` : ''}</div>`;
+      icons(form);
+    } catch (err) { error.textContent = err.message; error.hidden = false; button.disabled = false; }
+    finally { delete form.dataset.submitting; }
+  });
   let choiceStep = 0, answers = ['', '', ''];
   const questions = [
     { title: t("Քանի՞ հոգու համար է սարքը"), options: [t("1–2 հոգի"), t("3–4 հոգի"), t("5 և ավելի")] },
@@ -173,7 +233,7 @@
     openDialog(choiceStep < 3 ? t("Օգնենք ընտրել") : t("Ձեր ընտրության ուղղությունը"), t("Երեք կարճ հարց՝ ձեր կարիքներն ավելի լավ հասկանալու համար։"), content);
   }
   function productCard(p) {
-    return `<article class="product" data-product="${escape(JSON.stringify(p))}"><a href="${link('/products/' + escape(p.slug))}" class="product-img"><img src="${escape(p.image)}" alt="${escape(p.demo ? t("Տեսականու պատկերային օրինակ") : p.title)}" width="460" height="300" loading="lazy">${p.volume ? `<span class="product-volume">${p.volume} ${escape(t("լ"))}</span>` : ''}</a><div class="product-copy"><div class="meta">${escape(p.demo ? t(p.category === "heater" ? "Ջրատաքացուցիչ" : "Պահեստամաս") : p.brand)}</div><a href="${link('/products/' + escape(p.slug))}"><h3>${escape(p.title)}</h3></a><div class="price">${p.price === null ? t("Հարցնել գինը") : price(p.price)}</div>${p.priceIsEstimate && p.price !== null ? `<small class="price-estimate">${escape(t("Կողմնորոշիչ գին"))}</small>` : ''}<div class="stock">${escape(p.availability)}</div><button type="button" class="btn" data-action="add-cart">${icon('bag')}${p.price === null ? t("Հարցնել գինը") : t("Ավելացնել պատվերին")}</button><button type="button" class="compare-button" data-action="compare-toggle" aria-pressed="false">${icon('scale')}<span>${escape(t("Համեմատել"))}</span></button></div></article>`;
+    return `<article class="product" data-product="${escape(JSON.stringify(p))}"><a href="${link('/products/' + p.slug)}" class="product-img"><img src="${escape(p.image)}" alt="${escape(p.demo ? t('Տեսականու պատկերային օրինակ') : p.title)}" width="460" height="300" loading="lazy">${p.volume ? `<span class="product-volume">${p.volume} ${escape(t('լ'))}</span>` : ''}</a><div class="product-copy"><div class="meta">${escape(p.brand || t(p.category === 'heater' ? 'Ջրատաքացուցիչ' : 'Պահեստամաս'))}</div><a href="${link('/products/' + p.slug)}"><h3>${escape(p.title)}</h3></a>${p.sku ? `<small class="store-sku">${escape(t('Արտիկուլ'))}: ${escape(p.sku)}</small>` : ''}<div class="price">${p.price === null ? escape(t('Հարցնել գինը')) : price(p.price)}${p.oldPrice != null && p.price != null && p.oldPrice > p.price ? `<del>${price(p.oldPrice)}</del>` : ''}</div>${p.priceIsEstimate && p.price !== null ? `<small class="price-estimate">${escape(t('Կողմնորոշիչ գին'))}</small>` : ''}<div class="stock">${escape(p.availability)}</div><button type="button" class="btn" data-action="add-cart">${icon('bag')}${escape(t(p.price === null ? 'Հարցնել գինը' : 'Ավելացնել պատվերին'))}</button><div class="store-product-tools"><button type="button" class="compare-button" data-action="compare-toggle" aria-pressed="false">${icon('scale')}<span>${escape(t('Համեմատել'))}</span></button><button type="button" class="compare-button" data-action="favorite-toggle" aria-pressed="false" aria-label="${escape(t('Ավելացնել ընտրյալներին'))}">${icon('heart')}</button></div></div></article>`;
   }
   const normalizeSearch = value => String(value ?? '').normalize('NFKC').toLowerCase().replaceAll('և', 'եւ').replace(/[^\p{L}\p{N}]+/gu, ' ').trim();
   function updateFilterSummary() {
@@ -250,21 +310,33 @@
         case 'cart': await showCart(); break;
         case 'add-cart': {
           const p = JSON.parse(el.closest('[data-product]').dataset.product); products.set(p.slug, p);
-          const existing = cart.find(x => x.slug === p.slug); if (existing) existing.quantity = Math.min(20, existing.quantity + 1); else cart.push({ slug: p.slug, quantity: 1 }); persist(); await showCart(); break;
+          if (p.stockQuantity === 0) { openRequest({kind:'part', subject:p.title}); break; }
+          const existing = cart.find(x => x.slug === p.slug), maximum = Math.min(20, p.stockQuantity ?? 20);
+          const requested = Number(el.closest('[data-product]').querySelector('[data-product-quantity]')?.value) || 1;
+          if (existing) existing.quantity = Math.min(maximum, existing.quantity + Math.max(1, Math.floor(requested))); else if (cart.length < 100) cart.push({ slug: p.slug, quantity: Math.min(maximum, Math.max(1, Math.floor(requested))) }); else { toast(t('Պատվերի ցանկը լիքն է')); break; }
+          persist(); await showCart(); break;
         }
         case 'cart-minus': case 'cart-plus': case 'cart-remove': {
           const item = cart.find(x => x.slug === el.dataset.slug); if (!item) break;
           if (el.dataset.action === 'cart-remove') item.quantity = 0; else item.quantity += el.dataset.action === 'cart-plus' ? 1 : -1;
-          item.quantity = Math.min(20, item.quantity); cart = cart.filter(x => x.quantity > 0); persist(); await showCart(); break;
+          item.quantity = Math.min(20, products.get(item.slug)?.stockQuantity ?? 20, item.quantity); cart = cart.filter(x => x.quantity > 0); persist(); await showCart(); break;
         }
-        case 'cart-submit': openRequest({ kind: 'order', subject: t("Ապրանքների պատվերի հայտ"), details: cart.map(x => `${products.get(x.slug).title} × ${x.quantity}`).join('\n') }); break;
+        case 'cart-submit': checkout(); break;
+        case 'saved-retry': await renderSaved(); break;
+        case 'favorite-toggle': {
+          const p = JSON.parse(el.closest('[data-product]').dataset.product); products.set(p.slug, p);
+          if (favorites.includes(p.slug)) favorites = favorites.filter(x => x !== p.slug);
+          else if (favorites.length < 200) favorites.push(p.slug); else { toast(t('Ընտրյալների ցանկը լիքն է')); break; }
+          persist(); if (savedRoot?.dataset.storeSaved === 'favorites') await renderSaved(); break;
+        }
         case 'compare-toggle': {
           const p = JSON.parse(el.closest('[data-product]').dataset.product); products.set(p.slug, p);
           if (compared.includes(p.slug)) compared = compared.filter(x => x !== p.slug);
-          else if (compared.length < 3) compared.push(p.slug); else toast(t("Կարող եք համեմատել մինչև 3 ապրանք։")); persist(); break;
+          else if (compared.length < 3) compared.push(p.slug); else toast(t("Կարող եք համեմատել մինչև 3 ապրանք։")); persist(); if (savedRoot?.dataset.storeSaved === 'compare') await renderSaved(); break;
         }
+        case 'compare-remove': compared = compared.filter(x => x !== el.dataset.slug); persist(); await showCompare(); break;
         case 'compare-open': await showCompare(); break;
-        case 'compare-clear': compared = []; persist(); break;
+        case 'compare-clear': compared = []; persist(); await renderSaved(); break;
         case 'compare-request': openRequest({ kind: 'question', subject: t("Օգնություն համեմատվող ապրանքների ընտրության հարցում"), details: compared.map(slug => products.get(slug).title).join(', ') }); break;
         case 'chooser': choiceStep = 0; answers = ['', '', '']; showChooser(); break;
         case 'choice-select': answers[choiceStep] = el.dataset.value; showChooser(); break;
@@ -307,5 +379,5 @@
     } catch { /* Optional WebMCP capability does not affect normal browsing. */ }
   }
   window.Jermiq = Object.freeze({ $, $$, escape, icons, api, toast, openDialog, closeDialog, t, link });
-  icons(); updateCounts();
+  icons(); updateCounts(); renderSaved();
 })();

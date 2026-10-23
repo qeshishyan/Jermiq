@@ -1,5 +1,7 @@
 # Ջերմիք — ամբողջական ASP.NET Core նախագիծ
 
+Խանութի նոր կատեգորիաները, մոդելով ընտրությունը, ադմին կառավարումն ու պատվերների հոսքը նկարագրված են [docs/STORE-CATALOG.md](docs/STORE-CATALOG.md) փաստաթղթում։
+
 Այս նախագիծը `https://jermiq.keshishyan1997.chatgpt.site/` կայքի ինքնուրույն գործարկվող .NET տարբերակն է։ Ներառված են backend-ը, frontend-ը, լոգոն, սկզբնական նկարները, հայերեն բովանդակությունը, տվյալների բազայի migrations-ը, SEO-ն և կառավարման բաժինը։
 
 **Տեխնոլոգիաներ՝ ASP.NET Core 10 / .NET 10 LTS, C# 14, Razor Pages, EF Core 10, SQLite, ASP.NET Core Identity, HTML/CSS/JavaScript։** Frontend-ի համար Node.js կամ npm անհրաժեշտ չէ։ Microsoft-ի պաշտոնական տարբերակների ցանկը՝ https://dotnet.microsoft.com/download/dotnet ։ Ստեղծվել է 2026-10-09-ին՝ SDK 10.0.401 / runtime և NuGet փաթեթներ 10.0.12-ով։

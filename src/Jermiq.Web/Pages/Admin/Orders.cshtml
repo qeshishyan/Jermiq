@@ -1,0 +1,23 @@
+@page "/admin/orders"
+@model Jermiq.Web.Pages.Admin.OrdersModel
+@{ Layout = "_OfficeLayout"; }
+<div class="orders-admin-shell" id="orders-admin-app">
+    <header class="orders-admin-header">
+        <a class="orders-back" href="/admin">← @L["Կառավարման բաժին"]</a>
+        <div class="orders-admin-heading"><div><div class="eyebrow">JERMIQ / @L["Օֆիս"]</div><h1>@L["Պատվերների կառավարում"]</h1><p>@L["Կայքից ստացված պատվերները՝ սերվերում հաշվարկված գներով և ապրանքների պահպանված տվյալներով։"]</p></div><div class="actions"><partial name="_LanguageSwitch" /><button type="button" id="orders-refresh" class="btn btn-outline">@L["Թարմացնել տվյալները"]</button></div></div>
+    </header>
+    <main id="main">
+        <p class="error-text" id="orders-error" role="alert" hidden></p>
+        <p class="notice" id="orders-notice" role="status" hidden></p>
+        <form id="orders-filter-form" class="orders-filter-form">
+            <label class="field">@L["Որոնում"]<input class="field-input" id="orders-query" type="search" maxlength="200" placeholder="@L["Անուն, հեռախոս, պատվերի համար կամ ապրանք…"]" /></label>
+            <label class="field">@L["Կարգավիճակ"]<select class="field-select" id="orders-status-filter"><option value="all">@L["Բոլորը"]</option><option value="new">@L["Նոր"]</option><option value="confirmed">@L["Հաստատված"]</option><option value="preparing">@L["Պատրաստվում է"]</option><option value="shipped">@L["Ուղարկված"]</option><option value="completed">@L["Ավարտված"]</option><option value="cancelled">@L["Չեղարկված"]</option></select></label>
+            <button class="btn" type="submit">@L["Որոնել"]</button>
+        </form>
+        <div class="orders-content-grid"><section class="orders-list-panel"><p id="orders-count" class="text-sm" aria-live="polite"></p><div id="orders-list" aria-live="polite"><p>@L["Բեռնվում է…"]</p></div><nav class="orders-pagination" aria-label="@L["Էջավորում"]"><button type="button" id="orders-prev" class="btn btn-outline">← @L["Նախորդը"]</button><span id="orders-page"></span><button type="button" id="orders-next" class="btn btn-outline">@L["Հաջորդը"] →</button></nav></section><section id="order-detail" class="orders-detail-panel" tabindex="-1" hidden aria-label="@L["Պատվերի մանրամասները"]"></section></div>
+    </main>
+</div>
+@section Scripts {
+    <link rel="stylesheet" href="/css/orders-admin.css" asp-append-version="true" />
+    <script src="/js/orders-admin.js" asp-append-version="true" defer></script>
+}

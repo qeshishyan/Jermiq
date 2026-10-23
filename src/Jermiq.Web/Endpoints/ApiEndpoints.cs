@@ -138,7 +138,7 @@ public static class ApiEndpoints
     }
 
     private static async Task<IResult> MutateAdminAsync(HttpContext ctx, IAntiforgery anti, AppDbContext db,
-        FileStorage storage, CancellationToken ct)
+        FileStorage storage, StoreCatalogService storeCatalog, CancellationToken ct)
     {
         await anti.ValidateRequestAsync(ctx);
         AdminMutation? body;
@@ -154,6 +154,8 @@ public static class ApiEndpoints
                     p.Specs.Any(x => string.IsNullOrWhiteSpace(x.Key) || x.Key.Length > 100 || x.Value is null || x.Value.Length > 500) ||
                     p.Images is null || p.Images.Count > 11 || p.Images.Any(image => !ProductImages.IsAllowed(image)) || !ProductImages.IsAllowed(p.Image))
                     return Error("Ստուգեք ապրանքի լրացված տվյալները։");
+                var catalogError = await storeCatalog.ValidateProductAsync(p, ct);
+                if (catalogError is not null) return Error(catalogError);
                 var row = await db.Products.SingleOrDefaultAsync(x => x.Slug == p.Slug, ct);
                 if (p.Revision != (row?.UpdatedAt ?? 0)) return Error("This product changed in another session. Reopen it before saving.", 409);
                 if (row is null) db.Products.Add(row = new ProductRecord { Slug = p.Slug });
@@ -187,6 +189,8 @@ public static class ApiEndpoints
                 {
                     var metadata = await db.Settings.SingleOrDefaultAsync(x => x.Key == "office:" + lead.Id, ct);
                     if (metadata is not null) db.Settings.Remove(metadata);
+                    var orderSnapshot = await db.Settings.SingleOrDefaultAsync(x => x.Key == "order:" + lead.Id, ct);
+                    if (orderSnapshot is not null) db.Settings.Remove(orderSnapshot);
                     db.Leads.Remove(lead);
                     await db.SaveChangesAsync(ct);
                     await transaction.CommitAsync(ct);

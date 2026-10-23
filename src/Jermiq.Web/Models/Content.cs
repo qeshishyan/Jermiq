@@ -24,6 +24,19 @@ public sealed class Product
     public bool PriceIsEstimate { get; set; }
     [StringLength(500)] public string SourceUrl { get; set; } = "";
     public bool Demo { get; set; }
+    [StringLength(80)] public string CatalogCategoryId { get; set; } = "";
+    [StringLength(100)] public string Sku { get; set; } = "";
+    [StringLength(200)] public string Manufacturer { get; set; } = "";
+    public List<string> ReplacementCodes { get; set; } = [];
+    public List<string> CompatibleModelIds { get; set; } = [];
+    public List<string> RelatedProductSlugs { get; set; } = [];
+    public List<string> AlternativeProductSlugs { get; set; } = [];
+    public List<string> BundleProductSlugs { get; set; } = [];
+    [Range(typeof(decimal), "0", "1000000000")] public decimal? OldPrice { get; set; }
+    public bool IsFeatured { get; set; }
+    public bool IsNew { get; set; }
+    [Range(0, 1000000)] public int? StockQuantity { get; set; }
+    public bool Published { get; set; } = true;
 }
 
 public sealed class SiteSettings

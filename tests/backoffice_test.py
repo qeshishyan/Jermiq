@@ -98,7 +98,7 @@ def main():
                 cms = get('/api/admin/cms')
                 check('Complete seeded translations', len(cms['texts']) > 450 and all(v.get('en') and v.get('ru') for v in cms['texts'].values()))
                 check('CMS mutation CSRF', request('/api/admin/cms', {'revision': cms['revision'], 'texts': {}})[0] == 400)
-                key = 'Ձեր տան տաք ջրի համար'
+                key = get('/api/admin/store-catalog')['home']['eyebrow']
                 patch = {'revision': cms['revision'], 'texts': {key: {'hy': 'CMS հայերեն', 'en': 'CMS English <script>bad()</script>', 'ru': 'CMS русский'}}}
                 check('CMS translations saved', request('/api/admin/cms', patch, token)[0] == 200)
                 check('Stale CMS edit rejected', request('/api/admin/cms', patch, token)[0] == 409)

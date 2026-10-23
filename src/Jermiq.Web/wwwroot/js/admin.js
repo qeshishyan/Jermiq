@@ -10,6 +10,7 @@
   const dirty = new Set(), selectedLeads = new Map();
   let productPage = 1, productPages = 1, productBaseline = null, dashboard = null;
   let products = [], settings = {}, selected = null, busy = false, officeData = null, currentLead = null, leadPage = 1;
+  let storeCatalog = { categories: [], equipmentModels: [] };
   let loadCms, loadUsers;
   let cms = null, translationPage = 1, translationPages = 1, translationDraft = {}, currentContent = null, users = [], currentUser = null;
   const date = value => new Date(value).toLocaleString(document.documentElement.lang, { timeZone: 'Asia/Yerevan' });
@@ -55,6 +56,10 @@
     await window.JermiqArrivals?.start({ refresh: refreshArrivals, open: openArrivals });
     const data = await api('/api/admin', { cache: 'no-store' });
     products = data.products; settings = data.settings;
+    if (isAdmin) {
+      storeCatalog = await api('/api/admin/store-catalog', { cache: 'no-store' });
+      setupStoreProductEditor();
+    }
     await loadOffice();
     if (isAdmin) {
       selected = products.find(p => p.slug === selected?.slug) || products[0] || null;
@@ -231,7 +236,9 @@
   function renderProducts() {
     if (!isAdmin) return;
     const query = $('#product-search').value.trim().toLocaleLowerCase(), category = $('#product-category-filter').value, state = $('#product-state-filter').value;
-    const list = products.filter(p => [p.title,p.slug,p.model,p.brand].join(' ').toLocaleLowerCase().includes(query) && (category === 'all' || category === p.category) && (state === 'all' || state === 'real' && !p.demo || state === 'demo' && p.demo || state === 'no-price' && p.price === null || state === 'no-description' && !p.description.trim()));
+    const categoryIds = new Set(category.startsWith('catalog:') ? [category.slice(8)] : []);
+    for (let changed = true; changed;) { changed = false; for (const c of storeCatalog.categories) if (categoryIds.has(c.parentId) && !categoryIds.has(c.id)) { categoryIds.add(c.id); changed = true; } }
+    const list = products.filter(p => [p.title,p.slug,p.model,p.brand,p.sku,p.manufacturer,...(p.replacementCodes || [])].join(' ').toLocaleLowerCase().includes(query) && (category === 'all' || category === p.category || categoryIds.has(p.catalogCategoryId)) && (state === 'all' || state === 'real' && !p.demo || state === 'demo' && p.demo || state === 'no-price' && p.price === null || state === 'no-description' && !p.description.trim()));
     list.sort($('#product-sort').value === 'price' ? (a,b) => (a.price ?? Infinity) - (b.price ?? Infinity) : (a,b) => a.title.localeCompare(b.title, document.documentElement.lang));
     productPages = Math.max(1,Math.ceil(list.length/12)); productPage = Math.max(1,Math.min(productPage,productPages));
     $('#product-metrics').innerHTML = [[t('All products'),products.length],[t('Real products'),products.filter(p => !p.demo).length],[t('Missing price'),products.filter(p => p.price === null).length]].map(([label,count]) => `<div class="catalog-metric"><span>${escape(label)}</span><strong>${count}</strong></div>`).join('');
@@ -240,6 +247,36 @@
     $('#product-prev').disabled = productPage <= 1; $('#product-next').disabled = productPage >= productPages;
     $('#product-list').innerHTML = list.length ? list.slice((productPage-1)*12, productPage*12).map(p => `<button type="button" data-edit-product="${escape(p.slug)}" class="managed-product ${!$('#product-form').hidden && p.slug === selected?.slug ? 'selected' : ''}"><img src="${escape(p.image)}" alt="" width="72" height="72" loading="lazy" /><span class="managed-product-copy"><strong>${escape(p.title)}</strong><small>${escape(p.model || p.slug)}</small><span class="office-badge">${escape(p.category === 'heater' ? t('Ջրատաքացուցիչ') : t('Պահեստամաս'))}</span></span><span class="managed-product-price"><strong>${p.price === null ? escape(t('Price to be confirmed')) : escape(p.price.toLocaleString(document.documentElement.lang) + ' AMD')}</strong><small>${escape(p.demo ? t('Demonstration') : t('Real products'))}</small><span>↗</span></span></button>`).join('') : `<div class="empty-state"><h3>${escape(t('No products match these filters'))}</h3><p>${escape(t('Change the search or filters to see more products.'))}</p></div>`;
   }
+  function setupStoreProductEditor() {
+    const form = $('#product-form');
+    if (!form) return;
+    const filter = $('#product-category-filter'), previousFilter = filter.value;
+    filter.querySelector('[data-store-categories]')?.remove();
+    const group = document.createElement('optgroup'); group.label = t('Կատալոգի կատեգորիաներ'); group.dataset.storeCategories = 'true';
+    for (const c of [...storeCatalog.categories].sort((a,b) => a.sortOrder - b.sortOrder || a.title.localeCompare(b.title))) group.append(new Option((c.parentId ? '— ' : '') + c.title, 'catalog:' + c.id));
+    filter.append(group); filter.value = previousFilter;
+    if ($('#store-product-fields')) return;
+    const section = document.createElement('section'); section.className = 'store-product-extension'; section.id = 'store-product-fields';
+    section.innerHTML = `<h3>${escape(t('Կատալոգ, կոդեր և համատեղելիություն'))}</h3><p class="store-product-note">${escape(t('Կատեգորիաներն ու սարքերի մոդելները կառավարվում են առանձին բաժնում։'))} <a href="/admin/store">${escape(t('Կատալոգի կառուցվածք'))} ↗</a></p><div class="form-grid"><label class="field full">${escape(t('Կատալոգի կատեգորիա'))}<select name="catalogCategoryId"></select></label><label class="field">${escape(t('Արտիկուլ / SKU'))}<input name="sku" maxlength="100" /></label><label class="field">${escape(t('Պահեստամասի արտադրող'))}<input name="manufacturer" maxlength="200" /></label><label class="field full">${escape(t('Փոխարինման կոդեր'))}<textarea name="replacementCodes" rows="3" maxlength="5000"></textarea><small>${escape(t('Յուրաքանչյուր կոդը՝ առանձին տողով կամ ստորակետով։'))}</small></label><label class="field">${escape(t('Հին գին՝ AMD'))}<input name="oldPrice" type="number" min="0" max="1000000000" step="0.01" /></label><label class="field">${escape(t('Պահեստային քանակ'))}<input name="stockQuantity" type="number" min="0" max="1000000" step="1" /><small>${escape(t('Դատարկ թողեք, եթե քանակը չի հաշվառվում։'))}</small></label><label class="checkbox-line"><input type="checkbox" name="published" />${escape(t('Հրապարակված է'))}</label><label class="checkbox-line"><input type="checkbox" name="isFeatured" />${escape(t('Առաջարկվող'))}</label><label class="checkbox-line"><input type="checkbox" name="isNew" />${escape(t('Նորույթ'))}</label><label class="field full">${escape(t('Համատեղելի սարքերի մոդելներ'))}<select name="compatibleModelIds" multiple size="5"></select><small>${escape(t('Ընտրեք միայն հաստատված համատեղելի մոդելները։ Մի քանի ընտրության համար պահեք Ctrl կամ Command։'))}</small></label><label class="field full">${escape(t('Փոխարինող ապրանքներ'))}<select name="alternativeProductSlugs" multiple size="4"></select></label><label class="field full">${escape(t('Հարակից պահեստամասեր'))}<select name="relatedProductSlugs" multiple size="4"></select></label><label class="field full">${escape(t('Հավաքածուի ապրանքներ'))}<select name="bundleProductSlugs" multiple size="4"></select><small>${escape(t('Կապակցված ապրանքների ընտրությունը չի փոխում նրանց գինը։'))}</small></label></div>`;
+    form.insertBefore(section, $('.editor-footer', form));
+  }
+  function fillStoreProductFields(p, form) {
+    if (!form.elements.catalogCategoryId) return;
+    const categories = [...storeCatalog.categories].sort((a,b) => a.sortOrder - b.sortOrder || a.title.localeCompare(b.title));
+    form.elements.catalogCategoryId.innerHTML = `<option value="">${escape(t('Ընտրեք կատեգորիան'))}</option>` + categories.map(c => `<option value="${escape(c.id)}">${escape((c.parentId ? (storeCatalog.categories.find(x => x.id === c.parentId)?.title || c.parentId) + ' / ' : '') + c.title + (c.published ? '' : ' · ' + t('Թաքցված')))}</option>`).join('');
+    if (p.catalogCategoryId && !categories.some(c => c.id === p.catalogCategoryId)) form.elements.catalogCategoryId.add(new Option(p.catalogCategoryId, p.catalogCategoryId));
+    for (const field of ['catalogCategoryId', 'sku', 'manufacturer', 'oldPrice', 'stockQuantity']) form.elements[field].value = p[field] ?? '';
+    form.elements.replacementCodes.value = (p.replacementCodes || []).join('\n');
+    for (const field of ['isFeatured', 'isNew']) form.elements[field].checked = !!p[field];
+    form.elements.published.checked = p.published !== false;
+    const models = storeCatalog.equipmentModels.map(m => ({ value:m.id, label:[m.brand,m.series,m.name].filter(Boolean).join(' · ') + (m.published ? '' : ' · ' + t('Թաքցված')) }));
+    const relations = products.filter(item => item.slug !== p.slug).map(item => ({ value:item.slug, label:item.title + (item.sku ? ' · ' + item.sku : '') }));
+    for (const field of ['compatibleModelIds', 'alternativeProductSlugs', 'relatedProductSlugs', 'bundleProductSlugs']) {
+      const options = [...(field === 'compatibleModelIds' ? models : relations)], values = p[field] || [];
+      for (const value of values) if (!options.some(option => option.value === value)) options.push({ value, label:value });
+      form.elements[field].innerHTML = options.map(option => `<option value="${escape(option.value)}" ${values.includes(option.value) ? 'selected' : ''}>${escape(option.label)}</option>`).join('');
+    }
+  }
   function fillProduct(p, reveal = true) {
     selected = structuredClone(p); productBaseline = structuredClone(p); dirty.delete('product-form'); const form = $('#product-form');
     if (reveal) form.hidden = false;
@@ -247,6 +284,7 @@
     form.elements.slug.readOnly = products.some(item => item.slug === p.slug);
     form.elements.specs.value = Object.entries(p.specs).map(([key, value]) => `${key}: ${value}`).join('\n');
     form.elements.demo.checked = p.demo; form.elements.priceIsEstimate.checked = !!p.priceIsEstimate;
+    fillStoreProductFields(p, form);
     $('#product-editor-title').textContent = p.title; $('#product-status-label').textContent = t(p.demo ? 'Demonstration examples' : 'Real products');
     $('#product-public-link').href = window.Jermiq.link('/products/' + p.slug); $('#product-public-link').hidden = !products.some(item => item.slug === p.slug);
     selected.images = [...(p.images || [])]; renderGalleryEditor(); $('#product-preview').src = p.image; $('#product-image-upload').value = '';
@@ -299,6 +337,13 @@
     ['slug', 'title', 'category', 'brand', 'model', 'description', 'availability', 'keywords'].forEach(key => { p[key] = String(data.get(key)).trim(); });
     ['price', 'volume'].forEach(key => { p[key] = data.get(key) === '' ? null : Number(data.get(key)); });
     p.demo = data.get('demo') === 'on'; p.priceIsEstimate = data.get('priceIsEstimate') === 'on';
+    if (event.target.elements.catalogCategoryId) {
+      for (const key of ['catalogCategoryId', 'sku', 'manufacturer']) p[key] = String(data.get(key) || '').trim();
+      for (const key of ['oldPrice', 'stockQuantity']) p[key] = data.get(key) === '' ? null : Number(data.get(key));
+      p.replacementCodes = [...new Set(String(data.get('replacementCodes') || '').split(/[\n,]+/).map(value => value.trim()).filter(Boolean))];
+      for (const key of ['compatibleModelIds', 'alternativeProductSlugs', 'relatedProductSlugs', 'bundleProductSlugs']) p[key] = data.getAll(key);
+      for (const key of ['published', 'isFeatured', 'isNew']) p[key] = data.get(key) === 'on';
+    }
     const lines = String(data.get('specs')).split('\n').filter(line => line.trim());
     const names = lines.map(line => line.slice(0,line.indexOf(':')).trim());
     if (lines.some(line => !line.includes(':') || !line.slice(0,line.indexOf(':')).trim()) || new Set(names).size !== names.length) { error(t('Use one unique specification name: value per line.')); return; }

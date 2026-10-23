@@ -51,7 +51,7 @@ const output=path.join(__dirname,'../test-results');
  await page.screenshot({path:path.join(output,'office-mobile.png'),fullPage:false});
  const mobileOverflow=await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth+1);
  if(mobileOverflow)throw Error('Mobile workspace overflows');
- await page.goto(input.baseUrl+'/?lang=ru');await page.locator('.hero').waitFor();
+ await page.goto(input.baseUrl+'/?lang=ru');await page.locator('.store-hero').waitFor();
  await page.screenshot({path:path.join(output,'site-russian-mobile.png'),fullPage:false});
  const publicOverflow=await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth+1);
  if(publicOverflow)throw Error('Mobile public site overflows');

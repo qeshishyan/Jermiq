@@ -46,6 +46,7 @@ public sealed class SeoService
         };
         if (!string.IsNullOrWhiteSpace(p.Brand)) data["brand"] = new Dictionary<string, string> { ["@type"] = "Brand", ["name"] = p.Brand };
         if (!string.IsNullOrWhiteSpace(p.Model)) data["model"] = p.Model;
+        if (!string.IsNullOrWhiteSpace(p.Sku)) data["sku"] = p.Sku;
         if (p.Price is not null && !p.PriceIsEstimate) data["offers"] = new Dictionary<string, object>
         {
             ["@type"] = "Offer", ["price"] = p.Price.Value, ["priceCurrency"] = "AMD", ["url"] = PageUrl("/products/" + p.Slug)
@@ -67,14 +68,16 @@ public static class SeoEndpoints
         app.MapGet("/robots.txt", (SeoService seo) => Results.Text(seo.IndexingEnabled
             ? $"User-agent: *\nAllow: /\nDisallow: /admin\nDisallow: /api/\nSitemap: {seo.Url("/sitemap.xml")}\n"
             : $"User-agent: *\nDisallow: /\nSitemap: {seo.Url("/sitemap.xml")}\n", "text/plain; charset=utf-8"));
-        app.MapGet("/sitemap.xml", async (SeoService seo, CatalogService catalog, StaticContent content, CancellationToken ct) =>
+        app.MapGet("/sitemap.xml", async (SeoService seo, CatalogService catalog, StoreCatalogService store, StaticContent content, CancellationToken ct) =>
         {
             XNamespace ns = "http://www.sitemaps.org/schemas/sitemap/0.9";
-            var paths = new[] { "", "/catalog", "/parts", "/services", "/warranty", "/contact", "/guide" }
+            var config = await store.GetAsync(ct);
+            var paths = new[] { "", "/catalog", "/parts", "/selection", "/services", "/warranty", "/contact", "/guide", "/delivery", "/payment", "/about" }
+                .Concat(config.Categories.Select(c => "/catalog?category=" + Uri.EscapeDataString(c.Id)))
                 .Concat(content.Articles.Select(x => "/guide/" + x.Slug))
                 .Concat((await catalog.GetProductsAsync(ct)).Where(x => !x.Demo).Select(x => "/products/" + x.Slug));
             var xml = new XDocument(new XDeclaration("1.0", "utf-8", null),
-                new XElement(ns + "urlset", paths.SelectMany(path => new[] { path, path + "?lang=en", path + "?lang=ru" }).Select(path => new XElement(ns + "url", new XElement(ns + "loc", seo.Url(path)),
+                new XElement(ns + "urlset", paths.Distinct().SelectMany(path => new[] { path, path + (path.Contains('?') ? "&" : "?") + "lang=en", path + (path.Contains('?') ? "&" : "?") + "lang=ru" }).Select(path => new XElement(ns + "url", new XElement(ns + "loc", seo.Url(path)),
                     new XElement(ns + "changefreq", "monthly"), new XElement(ns + "priority", path == "" ? "1.0" : "0.7")))));
             return Results.Text(xml.ToString(), "application/xml; charset=utf-8");
         });
