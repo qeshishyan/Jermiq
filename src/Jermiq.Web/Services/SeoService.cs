@@ -72,7 +72,7 @@ public static class SeoEndpoints
         {
             XNamespace ns = "http://www.sitemaps.org/schemas/sitemap/0.9";
             var config = await store.GetAsync(ct);
-            var paths = new[] { "", "/catalog", "/parts", "/selection", "/services", "/warranty", "/contact", "/guide", "/delivery", "/payment", "/about" }
+            var paths = new[] { "", "/catalog", "/parts", "/selection", "/find-part", "/services", "/warranty", "/contact", "/guide", "/delivery", "/payment", "/about" }
                 .Concat(config.Categories.Select(c => "/catalog?category=" + Uri.EscapeDataString(c.Id)))
                 .Concat(content.Articles.Select(x => "/guide/" + x.Slug))
                 .Concat((await catalog.GetProductsAsync(ct)).Where(x => !x.Demo).Select(x => "/products/" + x.Slug));

@@ -43,6 +43,7 @@
     <link rel="stylesheet" href="/css/navigation.css" asp-append-version="true" />
     <link rel="stylesheet" href="/css/storefront.css" asp-append-version="true" />
     <link rel="stylesheet" href="/css/commerce.css" asp-append-version="true" />
+    <link rel="stylesheet" href="/css/marketing-motion.css" asp-append-version="true" />
     <script type="application/ld+json">@Html.Raw(SiteJson.Serialize(Seo.Organization(settings)))</script>
     @if (ViewData["StructuredData"] is object schema)
     { <script type="application/ld+json">@Html.Raw(SiteJson.Serialize(schema))</script> }
@@ -72,7 +73,7 @@
                 <details class="store-mega"><summary><i data-icon="package"></i>@L["Կատեգորիաներ"] <span aria-hidden="true">⌄</span></summary><div class="store-mega-panel">@foreach (var category in store.Categories.Where(x => x.ParentId.Length == 0).OrderBy(x => x.SortOrder)) { <div><a href="@("/catalog?category=" + Uri.EscapeDataString(category.Id))"><strong>@category.Title</strong></a>@foreach (var child in store.Categories.Where(x => x.ParentId == category.Id).OrderBy(x => x.SortOrder)) { <a href="@("/catalog?category=" + Uri.EscapeDataString(child.Id))">@child.Title</a> }</div> }</div></details>
                 @foreach (var item in new[] {
                     (Url: "/catalog", Label: "Ամբողջ տեսականին", Icon: "droplets", Featured: false),
-                    (Url: "/selection", Label: "Ընտրել մոդելով", Icon: "search-check", Featured: true),
+                    (Url: "/find-part", Label: "Գտնենք ճիշտ մասը", Icon: "search-check", Featured: true),
                     (Url: "/services", Label: "Սպասարկում", Icon: "wrench", Featured: false),
                     (Url: "/guide", Label: "Օգտակար նյութեր", Icon: "book", Featured: false),
                     (Url: "/contact", Label: "Կապ", Icon: "message", Featured: false) })
@@ -93,7 +94,7 @@
 </header>
 
 <main id="main">@RenderBody()</main>
-<footer class="footer"><div class="container"><div class="footer-grid"><div><partial name="_Brand" /><p>@L["Տաք ջրի հարցերով՝ ընտրությունից մինչև սպասարկում։ Օգնում ենք ընտրել սարքը, գտնել պահեստամասը և պահպանել սարքի աշխատանքը։"]</p></div><div><h3>@L["Տեսականի և ծառայություններ"]</h3><div class="footer-links"><a href="/catalog?category=water-heaters">@L["Ջրատաքացուցիչներ"]</a><a href="/parts">@L["Պահեստամասեր"]</a><a href="/selection">@L["Ընտրել մոդելով"]</a><a href="/services">@L["Վերանորոգում և սպասարկում"]</a><a href="/warranty">@L["Երաշխիքային պայմաններ"]</a><a href="/delivery">@L["Առաքում"]</a><a href="/payment">@L["Վճարում"]</a><a href="/about">@L["Ջերմիքի մասին"]</a></div></div><div><h3>@L["Կապ մեզ հետ"]</h3><div class="footer-links">
+<footer class="footer"><div class="container"><div class="footer-grid"><div><partial name="_Brand" /><p>@L["Տաք ջրի հարցերով՝ ընտրությունից մինչև սպասարկում։ Օգնում ենք ընտրել սարքը, գտնել պահեստամասը և պահպանել սարքի աշխատանքը։"]</p></div><div><h3>@L["Տեսականի և ծառայություններ"]</h3><div class="footer-links"><a href="/catalog?category=water-heaters">@L["Ջրատաքացուցիչներ"]</a><a href="/parts">@L["Պահեստամասեր"]</a><a href="/find-part">@L["Գտնենք ճիշտ մասը"]</a><a href="/services">@L["Վերանորոգում և սպասարկում"]</a><a href="/warranty">@L["Երաշխիքային պայմաններ"]</a><a href="/delivery">@L["Առաքում"]</a><a href="/payment">@L["Վճարում"]</a><a href="/about">@L["Ջերմիքի մասին"]</a></div></div><div><h3>@L["Կապ մեզ հետ"]</h3><div class="footer-links">
     @if (settings.Phone.Length > 0) { <a href="tel:@System.Text.RegularExpressions.Regex.Replace(settings.Phone, "[^+0-9]", "")">@settings.Phone</a> }
     @if (settings.Email.Length > 0) { <a href="mailto:@settings.Email">@settings.Email</a> }
     @if (settings.Address.Length > 0) { <span>@settings.Address</span> }
@@ -114,6 +115,7 @@
 <script type="application/json" id="site-translations">@Html.Raw(SiteJson.Serialize(L.ClientTexts))</script>
 <script src="/js/site.js" asp-append-version="true" defer></script>
 <script src="/js/storefront.js" asp-append-version="true" defer></script>
+<script src="/js/marketing-motion.js" asp-append-version="true" defer></script>
 @await RenderSectionAsync("Scripts", required: false)
 </body>
 </html>

@@ -139,6 +139,39 @@
     })();
     try { await catalogLoading; } finally { catalogLoading = null; }
   }
+  // Bundles commit as one change: a failed line must not leave a partial selection in the cart.
+  let cartOperation = Promise.resolve();
+  function addCartItems(items) {
+    const operation = cartOperation.then(async () => {
+      if (!Array.isArray(items) || !items.length || items.length > 100 || items.some(item =>
+        !item || typeof item.slug !== 'string' || !/^[a-z0-9-]{2,80}$/.test(item.slug) ||
+        !Number.isInteger(item.quantity) || item.quantity < 1 || item.quantity > 20)) {
+        throw new Error(t('Ընտրեք ապրանքները և ստուգեք քանակները։'));
+      }
+      const { products: liveProducts } = await api('/api/catalog');
+      const live = new Map(liveProducts.map(product => [product.slug, product]));
+      const incoming = new Map();
+      items.forEach(item => incoming.set(item.slug, (incoming.get(item.slug) || 0) + item.quantity));
+      const candidate = new Map(cart.filter(item => live.has(item.slug)).map(item => [item.slug, { ...item }]));
+      for (const [slug, quantity] of incoming) {
+        const product = live.get(slug);
+        if (!product || product.published === false) throw new Error(t('Ընտրված ապրանքներից մեկն այլևս հասանելի չէ։ Թարմացրեք էջը։'));
+        const nextQuantity = (candidate.get(slug)?.quantity || 0) + quantity;
+        if (nextQuantity > 20 || (product.stockQuantity != null && nextQuantity > product.stockQuantity)) {
+          throw new Error(t('Ընտրված քանակը՝ զամբյուղում եղածի հետ միասին, գերազանցում է թույլատրելի առկայությունը։'));
+        }
+        candidate.set(slug, { slug, quantity: nextQuantity });
+      }
+      if (candidate.size > 100) throw new Error(t('Պատվերի ցանկը լիքն է'));
+      products.clear(); live.forEach((product, slug) => products.set(slug, product));
+      catalogLoaded = true; cart = [...candidate.values()]; persist();
+      await renderSaved();
+      document.dispatchEvent(new CustomEvent('jermiq:cart-updated', { detail: { slugs: [...incoming.keys()] } }));
+      return { count: cart.reduce((sum, item) => sum + item.quantity, 0) };
+    });
+    cartOperation = operation.catch(() => {});
+    return operation;
+  }
   function updateCounts() {
     const count = cart.reduce((sum, x) => sum + x.quantity, 0);
     if ($('#cart-count')) { $('#cart-count').hidden = count === 0; $('#cart-count').textContent = count; }
@@ -155,6 +188,7 @@
       el.setAttribute('aria-pressed', String(selected)); el.setAttribute('aria-label', t(selected ? 'Հեռացնել ընտրյալներից' : 'Ավելացնել ընտրյալներին'));
     });
   }
+  function refreshProductActions(root = document) { icons(root); updateCounts(); }
   const savedRoot = $('[data-store-saved]');
   function emptySaved(message) { return `<div class="empty-state">${icon('package')}<h2>${escape(t(message))}</h2><a href="${link('/catalog')}" class="btn">${escape(t('Տեսնել ապրանքները'))}</a></div>`; }
   function cartContent() {
@@ -233,7 +267,8 @@
     openDialog(choiceStep < 3 ? t("Օգնենք ընտրել") : t("Ձեր ընտրության ուղղությունը"), t("Երեք կարճ հարց՝ ձեր կարիքներն ավելի լավ հասկանալու համար։"), content);
   }
   function productCard(p) {
-    return `<article class="product" data-product="${escape(JSON.stringify(p))}"><a href="${link('/products/' + p.slug)}" class="product-img"><img src="${escape(p.image)}" alt="${escape(p.demo ? t('Տեսականու պատկերային օրինակ') : p.title)}" width="460" height="300" loading="lazy">${p.volume ? `<span class="product-volume">${p.volume} ${escape(t('լ'))}</span>` : ''}</a><div class="product-copy"><div class="meta">${escape(p.brand || t(p.category === 'heater' ? 'Ջրատաքացուցիչ' : 'Պահեստամաս'))}</div><a href="${link('/products/' + p.slug)}"><h3>${escape(p.title)}</h3></a>${p.sku ? `<small class="store-sku">${escape(t('Արտիկուլ'))}: ${escape(p.sku)}</small>` : ''}<div class="price">${p.price === null ? escape(t('Հարցնել գինը')) : price(p.price)}${p.oldPrice != null && p.price != null && p.oldPrice > p.price ? `<del>${price(p.oldPrice)}</del>` : ''}</div>${p.priceIsEstimate && p.price !== null ? `<small class="price-estimate">${escape(t('Կողմնորոշիչ գին'))}</small>` : ''}<div class="stock">${escape(p.availability)}</div><button type="button" class="btn" data-action="add-cart">${icon('bag')}${escape(t(p.price === null ? 'Հարցնել գինը' : 'Ավելացնել պատվերին'))}</button><div class="store-product-tools"><button type="button" class="compare-button" data-action="compare-toggle" aria-pressed="false">${icon('scale')}<span>${escape(t('Համեմատել'))}</span></button><button type="button" class="compare-button" data-action="favorite-toggle" aria-pressed="false" aria-label="${escape(t('Ավելացնել ընտրյալներին'))}">${icon('heart')}</button></div></div></article>`;
+    const discounted = p.oldPrice != null && p.price != null && p.oldPrice > p.price;
+    return `<article class="product store-product" data-product="${escape(JSON.stringify(p))}"><div class="store-product-image"><a href="${link('/products/' + p.slug)}" class="product-img"><img src="${escape(p.image)}" alt="${escape(p.demo ? t('Տեսականու պատկերային օրինակ') : p.title)}" width="460" height="360" loading="lazy"></a><div class="store-product-badges">${p.isNew ? `<span class="store-badge-new">${escape(t('Նոր'))}</span>` : ''}${discounted ? `<span class="store-badge-sale">${escape(t('Զեղչ'))}</span>` : ''}${p.isFeatured ? `<span>${escape(t('Առաջարկվող'))}</span>` : ''}</div><button type="button" class="store-favorite" data-action="favorite-toggle" aria-pressed="false" aria-label="${escape(t('Ավելացնել ընտրյալներին'))}">${icon('heart')}</button></div><div class="product-copy"><div class="store-product-meta"><span>${escape(p.brand || t(p.category === 'heater' ? 'Ջրատաքացուցիչ' : 'Պահեստամաս'))}</span>${p.sku ? `<small>${escape(t('Կոդ'))}: ${escape(p.sku)}</small>` : ''}</div><a href="${link('/products/' + p.slug)}"><h3>${escape(p.title)}</h3></a><div class="store-product-prices"><div class="price">${p.price === null ? escape(t('Հարցնել գինը')) : price(p.price)}</div>${discounted ? `<del>${price(p.oldPrice)}</del>` : ''}</div>${p.priceIsEstimate && p.price !== null ? `<small class="price-estimate">${escape(t('Կողմնորոշիչ գին'))}</small>` : ''}<div class="stock">${escape(p.availability)}${p.stockQuantity != null ? ` · ${p.stockQuantity} ${escape(t('հատ'))}` : ''}</div><div class="store-product-actions"><button type="button" class="btn" data-action="add-cart">${icon('bag')}${escape(t(p.price === null ? 'Հարցնել գինը' : 'Ավելացնել պատվերին'))}</button><button type="button" class="compare-button" data-action="compare-toggle" aria-pressed="false" aria-label="${escape(t('Համեմատել'))}">${icon('scale')}</button></div></div></article>`;
   }
   const normalizeSearch = value => String(value ?? '').normalize('NFKC').toLowerCase().replaceAll('և', 'եւ').replace(/[^\p{L}\p{N}]+/gu, ' ').trim();
   function updateFilterSummary() {
@@ -311,10 +346,12 @@
         case 'add-cart': {
           const p = JSON.parse(el.closest('[data-product]').dataset.product); products.set(p.slug, p);
           if (p.stockQuantity === 0) { openRequest({kind:'part', subject:p.title}); break; }
-          const existing = cart.find(x => x.slug === p.slug), maximum = Math.min(20, p.stockQuantity ?? 20);
           const requested = Number(el.closest('[data-product]').querySelector('[data-product-quantity]')?.value) || 1;
-          if (existing) existing.quantity = Math.min(maximum, existing.quantity + Math.max(1, Math.floor(requested))); else if (cart.length < 100) cart.push({ slug: p.slug, quantity: Math.min(maximum, Math.max(1, Math.floor(requested))) }); else { toast(t('Պատվերի ցանկը լիքն է')); break; }
-          persist(); await showCart(); break;
+          if (el.dataset.cartBusy) break;
+          el.dataset.cartBusy = 'true'; el.disabled = true;
+          try { await addCartItems([{ slug: p.slug, quantity: Math.max(1, Math.floor(requested)) }]); await showCart(); }
+          finally { delete el.dataset.cartBusy; el.disabled = false; }
+          break;
         }
         case 'cart-minus': case 'cart-plus': case 'cart-remove': {
           const item = cart.find(x => x.slug === el.dataset.slug); if (!item) break;
@@ -378,6 +415,6 @@
       } });
     } catch { /* Optional WebMCP capability does not affect normal browsing. */ }
   }
-  window.Jermiq = Object.freeze({ $, $$, escape, icons, api, toast, openDialog, closeDialog, t, link });
+  window.Jermiq = Object.freeze({ $, $$, escape, icons, api, toast, openDialog, closeDialog, t, link, openRequest, productCard, addCartItems, openCart: showCart, refreshProductActions });
   icons(); updateCounts(); renderSaved();
 })();

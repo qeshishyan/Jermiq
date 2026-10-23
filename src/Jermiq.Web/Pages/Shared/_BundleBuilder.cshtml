@@ -1,0 +1,41 @@
+@model Jermiq.Web.Pages.Products.DetailModel
+@{
+    var main = Model.Product;
+    var additions = Model.Bundle;
+    var initial = new[] { main }.Concat(additions.Where(x => x.StockQuantity != 0)).ToList();
+    var hasUnknownPrice = initial.Any(x => x.Price is null);
+    var hasEstimate = initial.Any(x => x.PriceIsEstimate);
+    var total = initial.Sum(x => x.Price ?? 0);
+    var headingId = "bundle-heading-" + main.Slug;
+}
+@if (additions.Count > 0)
+{
+<section class="bundle-builder" id="bundle" data-bundle-builder aria-labelledby="@headingId">
+    <div class="bundle-heading"><div><span class="eyebrow">@L["Միասին՝ ավելի ամբողջական"]</span><h2 id="@headingId">@L["Լրացրեք հավաքածուն՝ մեկ ընտրությամբ"]</h2><p>@L["Հիմնական մասն ու լրացնող դետալները՝ մեկ տեղում։ Ընտրեք միայն այն, ինչ ձեզ պետք է։"]</p></div><span class="bundle-heading-mark" aria-hidden="true"><i data-icon="package"></i></span></div>
+    <div class="bundle-items" aria-label="@L["Հավաքածուի ապրանքներ"]">
+        <article class="bundle-item bundle-item-base is-selected" data-bundle-card data-bundle-slug="@main.Slug">
+            <div class="bundle-item-top"><span class="bundle-item-role">@L["Հիմնական մասը"]</span><span class="bundle-item-check" aria-hidden="true">✓</span></div>
+            <a class="bundle-item-picture" href="/products/@main.Slug"><img src="@main.Image" alt="" loading="lazy" width="180" height="150" /></a>
+            <div class="bundle-item-copy"><h3>@main.Title</h3>@if (main.Sku.Length > 0) { <small>@L["Արտիկուլ"]: @main.Sku</small> }<div class="bundle-item-price">@(main.Price is null ? L["Գինը՝ ճշտման ենթակա"] : main.Price.Value.ToString("N0") + " ֏")</div>@if (main.PriceIsEstimate && main.Price is not null) { <small>@L["Կողմնորոշիչ գին"]</small> }</div>
+            <div class="bundle-base-caption"><i data-icon="check"></i><span>@L["Միշտ ներառված է"]</span></div>
+        </article>
+        @foreach (var item in additions)
+        {
+            var available = item.StockQuantity != 0;
+            var choiceId = "bundle-choice-" + main.Slug + "-" + item.Slug;
+            <article class="bundle-item @(available ? "is-selected" : "is-unavailable")" data-bundle-card data-bundle-slug="@item.Slug">
+                <label class="bundle-item-select" for="@choiceId"><input id="@choiceId" type="checkbox" data-bundle-toggle value="@item.Slug" checked="@available" disabled="@(!available)" /><span>@L["Ավելացնել հավաքածուին"]</span><span class="bundle-item-check" aria-hidden="true">✓</span></label>
+                <label class="bundle-item-main" for="@choiceId"><img src="@item.Image" alt="" loading="lazy" width="180" height="150" /><span class="bundle-item-copy"><strong>@item.Title</strong>@if (item.Sku.Length > 0) { <small>@L["Արտիկուլ"]: @item.Sku</small> }<span class="bundle-item-price">@(item.Price is null ? L["Գինը՝ ճշտման ենթակա"] : item.Price.Value.ToString("N0") + " ֏")</span>@if (item.PriceIsEstimate && item.Price is not null) { <small>@L["Կողմնորոշիչ գին"]</small> }</span></label>
+                <div class="bundle-item-footer">@if (!available) { <span>@L["Առկայությունը պետք է ճշտել"]</span> } else { <span data-bundle-choice-label>@L["Ներառված է"]</span> }<a href="/products/@item.Slug" aria-label="@item.Title — @L["Դիտել ապրանքը"]">@L["Մանրամասն"] <span aria-hidden="true">↗</span></a></div>
+            </article>
+        }
+    </div>
+    <div class="bundle-bottom"><div class="bundle-selection-summary"><span class="bundle-selection-label">@L["Ձեր ընտրությունը"]</span><strong data-bundle-count>@initial.Count @L["ապրանք"]</strong><label class="bundle-quantity">@L["Հավաքածուների քանակ"]<input data-bundle-quantity type="number" min="1" max="20" step="1" value="1" inputmode="numeric" aria-label="@L["Հավաքածուների քանակ"]" /></label></div><div class="bundle-total" aria-live="polite" aria-atomic="true"><span data-bundle-total-label>@L[hasUnknownPrice ? "Հայտնի գների գումարը՝" : hasEstimate ? "Կողմնորոշիչ գումար" : "Ընդհանուր արժեքը"]</span><strong data-bundle-total>@total.ToString("N0") ֏</strong></div><button type="button" class="btn bundle-add" data-bundle-add disabled="@(main.StockQuantity == 0)"><i data-icon="bag"></i><span>@L["Ավելացնել հավաքածուն"]</span><span aria-hidden="true">→</span></button></div>
+    <p class="bundle-note" data-bundle-note>@L[hasUnknownPrice || hasEstimate ? "Վերջնական գինը կհամաձայնեցվի մենեջերի հետ։ Առաքման արժեքը հաշվարկվում է առանձին։" : "Գումարը ներառում է ընտրված ապրանքները։ Առաքման արժեքը հաշվարկվում է առանձին։"]</p>
+    <p class="bundle-compatibility-note"><i data-icon="search-check"></i><span>@L["Ընտրությունից առաջ համեմատեք սարքի մոդելը, դետալի չափերն ու ամրացումը։"] <button type="button" class="plain-button" data-request="part" data-subject="@main.Title">@L["Օգնեք ճշտել"] →</button></span></p>
+    @if (main.StockQuantity == 0) { <p class="bundle-stock-note">@L["Հիմնական մասի առկայությունը պետք է ճշտել։ Թողեք հարցում՝ համապատասխան տարբերակ գտնելու համար։"]</p> }
+    <p class="error-text bundle-feedback" data-bundle-error role="alert" hidden></p><p class="bundle-feedback" data-bundle-status role="status" aria-live="polite" hidden></p>
+    <noscript><p class="bundle-note">@L["Հավաքածուն միասին ավելացնելու համար միացրեք JavaScript-ը։ Ապրանքները կարող եք բացել նաև առանձին։"]</p></noscript>
+    <script type="application/json" data-bundle-data>@Html.Raw(SiteJson.Serialize(new { baseProduct = main, products = additions }))</script>
+</section>
+}
