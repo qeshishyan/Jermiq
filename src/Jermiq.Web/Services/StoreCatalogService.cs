@@ -15,12 +15,15 @@ public sealed class StoreCatalogService(AppDbContext db, ContentLocalizer locali
 {
     public const string SettingsKey = "store-catalog";
     private static readonly Regex Identifier = new("^[a-z0-9][a-z0-9-]{1,79}$", RegexOptions.CultureInvariant);
+    private static readonly HashSet<string> InformationPageIds =
+        ["delivery", "payment", "returns", "warranty", "terms", "privacy", "about", "ordering"];
 
     public async Task<StoreCatalogConfiguration> GetAsync(CancellationToken ct = default, bool localized = true)
     {
         var row = await db.Settings.AsNoTracking().SingleOrDefaultAsync(x => x.Key == SettingsKey, ct);
         var result = row is null ? StaticContent.Read<StoreCatalogConfiguration>(environment, SettingsKey)
             : SiteJson.Deserialize<StoreCatalogConfiguration>(row.Value);
+        result.Information ??= StaticContent.Read<StoreInformationContent>(environment, "store-information");
         if (!localized) return result;
         result.Categories = VisibleCategories(result.Categories);
         var visibleIds = result.Categories.Select(x => x.Id).ToHashSet(StringComparer.Ordinal);
@@ -40,6 +43,28 @@ public sealed class StoreCatalogService(AppDbContext db, ContentLocalizer locali
         result.Home.WholesaleText = localizer[result.Home.WholesaleText];
         result.PaymentText = localizer[result.PaymentText];
         result.AboutText = localizer[result.AboutText];
+        foreach (var page in result.Information.Pages)
+        {
+            page.Intro = localizer[page.Intro];
+            foreach (var section in page.Sections)
+            {
+                section.Title = localizer[section.Title];
+                section.Body = localizer[section.Body];
+            }
+            foreach (var faq in page.Faqs)
+            {
+                faq.Question = localizer[faq.Question];
+                faq.Answer = localizer[faq.Answer];
+            }
+        }
+        result.Information.DeliveryOptions = result.Information.DeliveryOptions.Where(x => x.Published).ToList();
+        foreach (var option in result.Information.DeliveryOptions)
+        {
+            option.Title = localizer[option.Title];
+            option.PriceNote = localizer[option.PriceNote];
+            option.Timeframe = localizer[option.Timeframe];
+            option.Details = localizer[option.Details];
+        }
         return result;
     }
 
@@ -76,13 +101,15 @@ public sealed class StoreCatalogService(AppDbContext db, ContentLocalizer locali
 
     public async Task<StoreCatalogConfiguration> SaveAsync(StoreCatalogConfiguration candidate, CancellationToken ct = default)
     {
-        ValidateConfiguration(candidate);
         // Keep reference checks and the snapshot replacement in one SQLite write transaction.
         // A concurrent product save must not attach a category after its deletion was checked.
         await using var transaction = await db.Database.BeginTransactionAsync(ct);
         var row = await db.Settings.AsNoTracking().SingleAsync(x => x.Key == SettingsKey, ct);
         var previous = SiteJson.Deserialize<StoreCatalogConfiguration>(row.Value);
         if (candidate.Revision != previous.Revision) throw new StoreCatalogConflictException();
+        // Older clients omit the new field. Keep an editor's saved information instead of replacing it.
+        candidate.Information ??= previous.Information ?? StaticContent.Read<StoreInformationContent>(environment, "store-information");
+        ValidateConfiguration(candidate);
         var categories = candidate.Categories.Select(x => x.Id).ToHashSet(StringComparer.Ordinal);
         var models = candidate.EquipmentModels.Select(x => x.Id).ToHashSet(StringComparer.Ordinal);
         var products = (await db.Products.AsNoTracking().ToListAsync(ct)).Select(x => SiteJson.Deserialize<Product>(x.Data)).ToList();
@@ -129,6 +156,24 @@ public sealed class StoreCatalogService(AppDbContext db, ContentLocalizer locali
         if (candidate.EquipmentModels.Any(x => x is null || !Valid(x) || x.Series is null || !categories.ContainsKey(x.CategoryId)) ||
             candidate.EquipmentModels.Select(x => x.Id).Distinct(StringComparer.Ordinal).Count() != candidate.EquipmentModels.Count)
             throw new ArgumentException("Սարքերի մոդելների կոդերը պետք է լինեն եզակի, իսկ բաժիններն ու անվանումները՝ վավեր։");
+        ValidateInformation(candidate.Information);
+    }
+
+    private static void ValidateInformation(StoreInformationContent? information)
+    {
+        if (information is null || information.Pages is null || information.DeliveryOptions is null ||
+            information.Pages.Count != InformationPageIds.Count || information.DeliveryOptions.Count is < 1 or > 20 ||
+            information.Pages.Any(page => page is null || !Valid(page) || page.Intro is null ||
+                !InformationPageIds.Contains(page.Id) || page.Sections is null || page.Faqs is null ||
+                page.Sections.Count > 24 || page.Faqs.Count > 20 ||
+                page.Sections.Any(section => section is null || !Valid(section) || section.Body is null) ||
+                page.Faqs.Any(faq => faq is null || !Valid(faq))) ||
+            information.Pages.Select(page => page.Id).Distinct(StringComparer.Ordinal).Count() != InformationPageIds.Count)
+            throw new ArgumentException("Ստուգեք տեղեկատվական էջերի բաժիններն ու հաճախ տրվող հարցերը։");
+        if (information.DeliveryOptions.Any(option => option is null || !Valid(option) ||
+                option.PriceNote is null || option.Timeframe is null || option.Details is null) ||
+            information.DeliveryOptions.Select(option => option.Id).Distinct(StringComparer.Ordinal).Count() != information.DeliveryOptions.Count)
+            throw new ArgumentException("Ստուգեք առաքման տարբերակների կոդերը, արժեքներն ու պայմանները։");
     }
 
     public async Task<string?> ValidateProductAsync(Product product, CancellationToken ct = default)
@@ -166,6 +211,7 @@ public sealed class StoreCatalogService(AppDbContext db, ContentLocalizer locali
     {
         if (await db.Settings.AnyAsync(x => x.Key == SettingsKey, ct)) return;
         var config = StaticContent.Read<StoreCatalogConfiguration>(environment, SettingsKey);
+        config.Information ??= StaticContent.Read<StoreInformationContent>(environment, "store-information");
         ValidateConfiguration(config);
         config.Revision = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
         db.Settings.Add(new SettingRecord { Key = SettingsKey, Value = SiteJson.Serialize(config) });

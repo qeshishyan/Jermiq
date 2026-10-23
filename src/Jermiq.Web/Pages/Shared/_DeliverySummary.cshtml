@@ -1,0 +1,22 @@
+@model StoreCatalogConfiguration
+@{
+    var options = Model.Information?.DeliveryOptions.Where(x => x.Published).Take(3).ToList() ?? [];
+    var culture = System.Globalization.CultureInfo.GetCultureInfo(L.Culture);
+}
+@if (options.Count > 0)
+{
+    <dl class="store-delivery-summary">
+        @foreach (var option in options)
+        {
+            <div><dt>@option.Title</dt><dd>
+                @if (option.Price is null) { @L["Համաձայնեցմամբ"] }
+                else if (option.Price == 0) { @L["Անվճար"] }
+                else
+                {
+                    if (option.PriceIsFrom) { <span>@L["Սկսած"] </span> }
+                    <span>@option.Price.Value.ToString("#,0.##", culture) ֏</span>
+                }
+            </dd></div>
+        }
+    </dl>
+}

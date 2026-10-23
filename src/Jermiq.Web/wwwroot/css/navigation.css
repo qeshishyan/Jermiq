@@ -1,4 +1,6 @@
 /* Public navigation. Keep the catalog and office control styles independent. */
+/* The expanded fallback menu must scroll away when JavaScript is unavailable. */
+@media(max-width:1180px){html:not(.nav-ready) .header{position:static}html:not(.nav-ready) .header .nav{max-height:none;overflow:visible}}
 .topbar{background:#f0f5f5;color:#536b77;padding:7px 0;font-size:.72rem;border-bottom:1px solid #e5eded}
 .topbar .container{align-items:center}
 .topbar .topbar-assurance{display:inline-flex;align-items:center;gap:7px}

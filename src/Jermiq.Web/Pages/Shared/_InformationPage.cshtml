@@ -1,0 +1,72 @@
+@model SitePageModel
+@{
+    var information = Model.Store.Information;
+    var infoPage = information?.Pages.FirstOrDefault(x => x.Id == Model.PageName);
+    var overview = Model.PageName switch { "delivery" => Model.Settings.Delivery, "warranty" => Model.Settings.Warranty, "payment" => Model.Store.PaymentText, "about" => Model.Store.AboutText, _ => "" };
+    var links = new[] { ("ordering", "Ինչպես պատվիրել"), ("delivery", "Առաքում և ինքնավերցում"), ("payment", "Վճարման պայմաններ"), ("returns", "Վերադարձ և փոխանակում"), ("warranty", "Երաշխիք"), ("terms", "Գնման պայմաններ"), ("privacy", "Գաղտնիության պայմաններ"), ("about", "Ջերմիքի մասին") };
+    var icon = Model.PageName switch { "delivery" => "package", "payment" => "file-check", "warranty" => "shield", "returns" => "refresh", "privacy" => "shield", "about" => "wrench", _ => "file-check" };
+    var culture = System.Globalization.CultureInfo.GetCultureInfo(L.Culture);
+}
+<div class="container information-page" data-information-page="@Model.PageName">
+    <nav class="breadcrumbs" aria-label="@L["Էջի ուղին"]"><a href="/">@L["Գլխավոր"]</a><span>/</span><span>@Model.Title</span></nav>
+    <header class="information-heading">
+        <div><div class="eyebrow">@L["Ջերմիք · Օգտակար տեղեկություններ"]</div><h1>@Model.Title</h1><p>@(infoPage?.Intro ?? Model.Description)</p></div>
+        <span class="information-heading-icon" aria-hidden="true"><i data-icon="@icon"></i></span>
+    </header>
+    <div class="information-layout">
+        <div class="information-main">
+            @if (!string.IsNullOrWhiteSpace(overview))
+            {
+                <section class="information-overview" aria-label="@L["Կարճ տեղեկություն"]"><i data-icon="file-check" aria-hidden="true"></i><div class="store-multiline">@overview</div></section>
+            }
+            @if (Model.PageName == "delivery" && information?.DeliveryOptions.Any(x => x.Published) == true)
+            {
+                <section class="information-rates" id="delivery-rates" aria-labelledby="delivery-rates-title">
+                    <div class="information-section-heading"><span class="information-kicker">@L["Ստացման տարբերակներ"]</span><h2 id="delivery-rates-title">@L["Առաքման սակագներ և ժամկետներ"]</h2><p>@L["Սակագները կողմնորոշիչ են․ վերջնական արժեքն ու օրը հաստատվում են ձեր հասցեի և պատվերի համար՝ մինչև ուղարկելը։"]</p></div>
+                    <div class="information-rate-grid">
+                        @foreach (var option in information.DeliveryOptions.Where(x => x.Published))
+                        {
+                            <article class="information-rate-card" data-delivery-option="@option.Id">
+                                <h3>@option.Title</h3>
+                                <div class="information-rate-price">
+                                    @if (option.Price is null) { <span>@L["Անհատական հաշվարկ"]</span> }
+                                    else if (option.Price == 0) { <span>@L["Անվճար"]</span> }
+                                    else { if (option.PriceIsFrom) { <small>@L["Սկսած"]</small> } <span>@option.Price.Value.ToString("#,0.##", culture) <small>֏</small></span> }
+                                </div>
+                                @if (option.Timeframe.Length > 0) { <p class="information-rate-time"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></svg>@option.Timeframe</p> }
+                                @if (option.PriceNote.Length > 0) { <p>@option.PriceNote</p> }
+                                @if (option.FreeFrom is not null) { <p class="information-rate-free">@L["Անվճար առաքման շեմ՝"] <strong>@option.FreeFrom.Value.ToString("#,0.##", culture) ֏</strong></p> }
+                                @if (option.Details.Length > 0) { <p class="information-rate-detail">@option.Details</p> }
+                            </article>
+                        }
+                    </div>
+                    <p class="information-small-note">@L["Տեղադրումը, հարկ բարձրացնելը և լրացուցիչ տեղափոխումը համաձայնեցվում են առանձին։ Առաքման վճարը հաշվարկվում է ապրանքներից առանձին։"]</p>
+                </section>
+            }
+            @if (Model.PageName == "ordering")
+            {
+                <ol class="information-process" aria-label="@L["Պատվերի չորս քայլերը"]">
+                    @foreach (var step in new[] { ("Գտեք ճիշտ ապրանքը", "Ստուգեք կոդը, մոդելն ու համատեղելիությունը։"), ("Ուղարկեք պատվերի հայտը", "Ընտրեք քանակն ու ստացման եղանակը։"), ("Հաստատեք պայմանները", "Համաձայնեցրեք գինը, առկայությունն ու առաքումը։"), ("Ստացեք և ստուգեք", "Համեմատեք ապրանքն ու փաստաթղթերը պատվերի հետ։") })
+                    { <li><strong>@L[step.Item1]</strong><span>@L[step.Item2]</span></li> }
+                </ol>
+            }
+            @if (infoPage is not null && infoPage.Sections.Count > 0)
+            {
+                <nav class="information-toc" aria-label="@L["Այս էջում"]"><strong>@L["Այս էջում"]</strong><div>@for (var i = 0; i < infoPage.Sections.Count; i++) { <a href="#info-section-@i">@infoPage.Sections[i].Title</a> }@if (infoPage.Faqs.Count > 0) { <a href="#information-faq">@L["Հաճախ տրվող հարցեր"]</a> }</div></nav>
+                <div class="information-sections">
+                    @for (var i = 0; i < infoPage.Sections.Count; i++)
+                    {
+                        var contentSection = infoPage.Sections[i];
+                        <section class="information-section" id="info-section-@i" aria-labelledby="info-title-@i"><span class="information-section-number" aria-hidden="true">@((i + 1).ToString("00"))</span><div><h2 id="info-title-@i">@contentSection.Title</h2>@foreach (var paragraph in contentSection.Body.Replace("\r\n", "\n").Split("\n\n", StringSplitOptions.RemoveEmptyEntries)) { <p>@paragraph</p> }</div></section>
+                    }
+                </div>
+            }
+            @if (infoPage is not null && infoPage.Faqs.Count > 0)
+            {
+                <section class="information-faq" id="information-faq" aria-labelledby="information-faq-title"><div class="information-section-heading"><span class="information-kicker">@L["Արագ պատասխաններ"]</span><h2 id="information-faq-title">@L["Հաճախ տրվող հարցեր"]</h2></div><div class="information-faq-list">@foreach (var faq in infoPage.Faqs) { <details><summary>@faq.Question<span aria-hidden="true">+</span></summary><div>@foreach (var paragraph in faq.Answer.Replace("\r\n", "\n").Split("\n\n", StringSplitOptions.RemoveEmptyEntries)) { <p>@paragraph</p> }</div></details> }</div></section>
+            }
+            <section class="information-help"><div><span class="information-kicker">@L["Ձեր պատվերի համար՝ հստակ պատասխան"]</span><h2>@L["Դեռ հարց ունե՞ք"]</h2><p>@L["Գրեք ապրանքի կոդը կամ պատվերի համարը և ձեր հարցը․ միասին կհստակեցնենք հաջորդ քայլը։"]</p></div><div class="actions"><button type="button" class="btn" data-request="question" data-subject="@Model.Title">@L["Ճշտել մանրամասները"]</button><a class="text-link" href="/find-part">@L["Գտնենք ճիշտ մասը"] <span aria-hidden="true">→</span></a></div></section>
+        </div>
+        <aside class="information-sidebar"><nav aria-label="@L["Տեղեկատվական էջեր"]"><h2>@L["Տեղեկատվություն"]</h2>@foreach (var item in links) { <a href="/@item.Item1" aria-current="@(Model.PageName == item.Item1 ? "page" : null)">@L[item.Item2]<span aria-hidden="true">→</span></a> }<a href="/contact">@L["Կապ մեզ հետ"]<span aria-hidden="true">→</span></a></nav><div class="information-contact"><i data-icon="message" aria-hidden="true"></i><h3>@L["Օգնե՞նք ձեր հարցով"]</h3><p>@L["Ընտրություն, պատվերի ճշտում կամ սպասարկում՝ մեկ հայտով։"]</p>@if (Model.Settings.Phone.Length > 0) { <a class="information-phone" href="tel:@System.Text.RegularExpressions.Regex.Replace(Model.Settings.Phone, "[^+0-9]", "")">@Model.Settings.Phone</a> }@if (Model.Settings.Hours.Length > 0) { <p>@Model.Settings.Hours</p> }<button type="button" class="btn btn-outline" data-request="callback">@L["Պատվիրել հետադարձ զանգ"]</button></div></aside>
+    </div>
+</div>

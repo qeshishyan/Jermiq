@@ -244,6 +244,22 @@
     $('#product-metrics').innerHTML = [[t('All products'),products.length],[t('Real products'),products.filter(p => !p.demo).length],[t('Missing price'),products.filter(p => p.price === null).length]].map(([label,count]) => `<div class="catalog-metric"><span>${escape(label)}</span><strong>${count}</strong></div>`).join('');
     $('#product-count').textContent = `${list.length} / ${products.length} ${t('Products')}`;
     $('#product-page').textContent = `${productPage} / ${productPages}`;
+    $('#product-page').setAttribute('role', 'status');
+    $('#product-page').setAttribute('aria-live', 'polite');
+    let pageLinks = $('#product-page-links');
+    if (!pageLinks) {
+      pageLinks = document.createElement('nav');
+      pageLinks.id = 'product-page-links';
+      pageLinks.className = 'office-product-pages';
+      pageLinks.setAttribute('aria-label', t('Էջավորում'));
+      $('#product-page').parentElement.classList.add('office-product-pagination');
+      $('#product-page').before(pageLinks);
+    }
+    const firstPage = Math.max(1, Math.min(productPage - 1, productPages - 2));
+    pageLinks.innerHTML = Array.from({ length: Math.min(3, productPages) }, (_, index) => firstPage + index)
+      .map(page => `<button type="button" data-product-page="${page}"${page === productPage ? ' class="is-current" aria-current="page"' : ''}${busy ? ' disabled' : ''}>${page}</button>`).join('');
+    $('#product-prev').setAttribute('aria-label', t('Նախորդ էջ'));
+    $('#product-next').setAttribute('aria-label', t('Հաջորդ էջ'));
     $('#product-prev').disabled = productPage <= 1; $('#product-next').disabled = productPage >= productPages;
     $('#product-list').innerHTML = list.length ? list.slice((productPage-1)*12, productPage*12).map(p => `<button type="button" data-edit-product="${escape(p.slug)}" class="managed-product ${!$('#product-form').hidden && p.slug === selected?.slug ? 'selected' : ''}"><img src="${escape(p.image)}" alt="" width="72" height="72" loading="lazy" /><span class="managed-product-copy"><strong>${escape(p.title)}</strong><small>${escape(p.model || p.slug)}</small><span class="office-badge">${escape(p.category === 'heater' ? t('Ջրատաքացուցիչ') : t('Պահեստամաս'))}</span></span><span class="managed-product-price"><strong>${p.price === null ? escape(t('Price to be confirmed')) : escape(p.price.toLocaleString(document.documentElement.lang) + ' AMD')}</strong><small>${escape(p.demo ? t('Demonstration') : t('Real products'))}</small><span>↗</span></span></button>`).join('') : `<div class="empty-state"><h3>${escape(t('No products match these filters'))}</h3><p>${escape(t('Change the search or filters to see more products.'))}</p></div>`;
   }
@@ -311,8 +327,17 @@
   if (isAdmin) {
   root.addEventListener('click', event => { const edit = event.target.closest('[data-edit-product]'); if (edit && discard('product-form')) { fillProduct(products.find(p => p.slug === edit.dataset.editProduct)); notice(''); } });
   ['product-search','product-category-filter','product-state-filter','product-sort'].forEach(id => $('#' + id).addEventListener(id === 'product-search' ? 'input' : 'change', () => { productPage = 1; renderProducts(); }));
-  $('#product-prev').addEventListener('click', () => { productPage--; renderProducts(); });
-  $('#product-next').addEventListener('click', () => { productPage++; renderProducts(); });
+  function changeProductPage(page, focusCurrent = false) {
+    if (busy || !Number.isInteger(page) || page < 1 || page > productPages || page === productPage) return;
+    productPage = page; renderProducts();
+    if (focusCurrent) $('#product-page-links [aria-current="page"]')?.focus({ preventScroll: true });
+  }
+  root.addEventListener('click', event => {
+    const page = event.target.closest('[data-product-page]');
+    if (page) changeProductPage(Number(page.dataset.productPage), true);
+  });
+  $('#product-prev').addEventListener('click', () => changeProductPage(productPage - 1));
+  $('#product-next').addEventListener('click', () => changeProductPage(productPage + 1));
   $('#product-close').addEventListener('click', () => { if (discard('product-form')) { $('#product-form').hidden = true; syncDrafts(); } });
   $('#product-reset').addEventListener('click', () => { if (discard('product-form')) fillProduct(productBaseline); });
   $('#product-new').addEventListener('click', () => { if (!discard('product-form')) return; fillProduct({ slug: `new-${Date.now()}`, title: t("Նոր ապրանք"), category: 'heater', volume: null, brand: '', model: '', description: '', price: null, availability: t("Առկայությունը ճշտվում է"), specs: {}, image: '/images/hero.webp', demo: false }); });

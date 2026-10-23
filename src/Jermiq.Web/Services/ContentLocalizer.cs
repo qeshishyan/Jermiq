@@ -17,6 +17,14 @@ public sealed class CmsContent
 public sealed class CmsDefaults(IWebHostEnvironment environment)
 {
     public CmsContent Content { get; } = ContentLocalizer.Defaults(environment);
+    // Detailed policies are localized on the server and through the catalog API.
+    // Keep their prose out of the UI dictionary embedded in every storefront page.
+    public HashSet<string> ServerRenderedTexts { get; } = StaticContent
+        .Read<StoreInformationContent>(environment, "store-information").Pages
+        .SelectMany(page => new[] { page.Intro }
+            .Concat(page.Sections.Select(section => section.Body))
+            .Concat(page.Faqs.Select(faq => faq.Answer)))
+        .ToHashSet(StringComparer.Ordinal);
     public CmsContent Create() => SiteJson.Deserialize<CmsContent>(SiteJson.Serialize(Content));
 }
 
@@ -48,7 +56,9 @@ public sealed class ContentLocalizer(CmsDefaults defaults)
         // Seed additions remain available after an older CMS record has been saved.
         foreach (var pair in defaults.Content.Texts) Content.Texts.TryAdd(pair.Key, new Dictionary<string, string>(pair.Value));
     }
-    public Dictionary<string, string> ClientTexts => Content.Texts.ToDictionary(x => x.Key, x => Translate(x.Key));
+    public Dictionary<string, string> ClientTexts => Content.Texts
+        .Where(x => !defaults.ServerRenderedTexts.Contains(x.Key))
+        .ToDictionary(x => x.Key, x => Translate(x.Key));
     public static CmsContent Defaults(IWebHostEnvironment env) => new()
     {
         Texts = StaticContent.Read<Dictionary<string, Dictionary<string, string>>>(env, "translations"),

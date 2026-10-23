@@ -8,7 +8,10 @@
     case "selection": <partial name="_Selection" model="Model" /> break;
     case "delivery":
     case "payment":
-    case "about": <partial name="_StoreInfo" model="Model" /> break;
+    case "about":
+    case "returns":
+    case "terms":
+    case "ordering": <partial name="_StoreInfo" model="Model" /> break;
     case "favorites":
     case "compare":
     case "cart": <partial name="_SavedProducts" model="Model" /> break;

@@ -99,6 +99,24 @@ check('Server sorting preserves selected control and price order', d.querySelect
 await navigate(d.querySelector('.store-reset').getAttribute('href'));
 check('Clear filters restores default sorting and removes chips', d.querySelector('#store-sort').value === 'popular' && !d.querySelector('.store-active-filters'));
 
+for (const listing of ['catalog', 'parts']) {
+  await navigate('/' + listing + '?sort=price');
+  const firstPageSlugs = new Set([...d.querySelectorAll('.store-product-grid [data-product]')].map(el => JSON.parse(el.dataset.product).slug));
+  const secondPageLink = [...d.querySelectorAll('.store-pagination a')].find(el => el.textContent === '2');
+  assert.ok(secondPageLink, listing + ' has a second result page');
+  await navigate(secondPageLink.getAttribute('href'));
+  const currentPages = d.querySelectorAll('.store-pagination [aria-current="page"]');
+  check(listing + ' updates the visible and accessible selected page after navigation',
+    currentPages.length === 1 && currentPages[0].textContent === '2' && currentPages[0].classList.contains('is-current') &&
+    d.querySelector('#store-sort').value === 'price' &&
+    [...d.querySelectorAll('.store-product-grid [data-product]')].every(el => !firstPageSlugs.has(JSON.parse(el.dataset.product).slug)));
+  const previousPageLink = d.querySelector('.store-pagination a');
+  await navigate(previousPageLink.getAttribute('href'));
+  check(listing + ' previous-page navigation restores the first active number',
+    d.querySelector('.store-pagination [aria-current="page"]').textContent === '1' && d.querySelector('#store-sort').value === 'price');
+}
+await navigate('/catalog');
+
 click('[data-request="service"]');
 check('Service form supports a second technical-label photo', !d.querySelector('#site-dialog [name="attachment2"]').disabled && d.querySelector('#site-dialog .photo-guide').textContent.includes('3–5'));
 check('Service fields are enabled in the service form', !d.querySelector('#site-dialog [name="issue"]').disabled);
@@ -132,6 +150,17 @@ await waitUntil(() => d.querySelector('#product-count').textContent.includes(`${
 check('Administrator UI loads the paginated catalog', d.querySelectorAll('[data-edit-product]').length === Math.min(12, expectedProducts));
 click('[data-tab="products"]');
 check('Products tab is visible', !d.querySelector('#panel-products').hidden && d.querySelector('#panel-leads').hidden);
+const firstAdminPage = new Set([...d.querySelectorAll('[data-edit-product]')].map(el => el.dataset.editProduct));
+click('[data-product-page="2"]');
+check('Administrator numbered pagination highlights only the selected page and changes results',
+  d.querySelectorAll('#product-page-links [aria-current="page"]').length === 1 &&
+  d.querySelector('#product-page-links [aria-current="page"]').textContent === '2' &&
+  d.querySelector('#product-page').textContent.startsWith('2 / ') &&
+  [...d.querySelectorAll('[data-edit-product]')].every(el => !firstAdminPage.has(el.dataset.editProduct)));
+click('#product-prev');
+check('Administrator previous-page button restores the first active number',
+  d.querySelector('#product-page-links [aria-current="page"]').textContent === '1' &&
+  d.querySelector('[data-edit-product]').dataset.editProduct === [...firstAdminPage][0]);
 click('#product-new');
 check('New product form initializes a new slug', d.querySelector('#product-form').elements.slug.value.startsWith('new-'));
 const productForm = d.querySelector('#product-form'); productForm.elements.title.value = 'Frontend Added Product';
@@ -140,6 +169,10 @@ await waitUntil(() => !d.querySelector('#admin-refresh').disabled && d.querySele
 const productSearch = d.querySelector('#product-search'); productSearch.value = 'Frontend Added Product';
 productSearch.dispatchEvent(new w.Event('input', { bubbles: true }));
 check('Administrator UI saves a new product to the real API', d.querySelectorAll('[data-edit-product]').length === 1 && d.querySelector('#product-list').textContent.includes('Frontend Added Product') && (await (await w.fetch('/api/admin')).json()).products.length === expectedProducts + 1);
+check('Filtering the administrator product list resets the active page and page controls',
+  d.querySelector('#product-page-links [aria-current="page"]').textContent === '1' &&
+  d.querySelectorAll('#product-page-links button').length === 1 &&
+  d.querySelector('#product-prev').disabled && d.querySelector('#product-next').disabled);
 click('[data-tab="settings"]');
 check('Settings tab is visible', !d.querySelector('#panel-settings').hidden);
 const settingsForm = d.querySelector('#settings-form'); settingsForm.elements.hours.value = 'Frontend QA hours';
