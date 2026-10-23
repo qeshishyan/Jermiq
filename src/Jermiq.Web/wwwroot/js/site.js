@@ -11,6 +11,8 @@
   const price = value => Number(value).toLocaleString(culture, { maximumFractionDigits: 2 }) + ' ֏';
   const settings = JSON.parse($('#site-settings')?.textContent || '{}');
   const paths = {
+    'arrow-up-right': '<path d="M7 17 17 7M7 7h10v10"/>',
+    'chevron-right': '<path d="m9 5 7 7-7 7"/>',
     sliders: '<path d="M4 7h16M4 17h16M8 4v6m8 4v6"/>',
     search: '<circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/>',
     'search-check': '<circle cx="10" cy="10" r="7"/><path d="m21 21-6-6m-8-5 2 2 4-4"/>',
@@ -209,7 +211,35 @@
   }
   $('#catalog-query')?.addEventListener('input', filterCatalog);
   ['#catalog-volume', '#catalog-brand', '#catalog-sort'].forEach(s => $(s)?.addEventListener('change', filterCatalog));
-  $('#menu-toggle').addEventListener('click', () => { const open = $('#main-nav').classList.toggle('is-open'); $('#menu-toggle').setAttribute('aria-expanded', String(open)); });
+  const menuToggle = $('#menu-toggle'), mainNav = $('#main-nav');
+  const compactNavigation = window.matchMedia?.('(max-width: 1180px)');
+  function setMenuOpen(open, restoreFocus = false) {
+    // Use the visible header edge so the panel fits even before the top bar scrolls away.
+    document.documentElement.style.setProperty('--navigation-header-height', `${Math.max(0, $('.header-main').getBoundingClientRect().bottom)}px`);
+    mainNav.classList.toggle('is-open', open);
+    menuToggle.setAttribute('aria-expanded', String(open));
+    menuToggle.setAttribute('aria-label', open ? menuToggle.dataset.closeLabel : menuToggle.dataset.openLabel);
+    if (restoreFocus) menuToggle.focus();
+  }
+  document.documentElement.classList.add('nav-ready');
+  menuToggle.addEventListener('click', () => setMenuOpen(menuToggle.getAttribute('aria-expanded') !== 'true'));
+  mainNav.addEventListener('click', event => {
+    if (event.target.closest('a, button')) setMenuOpen(false, event.target.closest('button') !== null);
+  });
+  document.addEventListener('keydown', event => {
+    if (event.key === 'Escape' && menuToggle.getAttribute('aria-expanded') === 'true') {
+      event.preventDefault(); setMenuOpen(false, true);
+    }
+  });
+  const dismissMenu = event => {
+    if (menuToggle.getAttribute('aria-expanded') === 'true' && !mainNav.contains(event.target) && !menuToggle.contains(event.target)) setMenuOpen(false);
+  };
+  document.addEventListener('click', dismissMenu);
+  document.addEventListener('focusin', dismissMenu);
+  compactNavigation?.addEventListener('change', () => {
+    const focusInMenu = mainNav.contains(document.activeElement);
+    setMenuOpen(false, compactNavigation.matches && focusInMenu);
+  });
   document.addEventListener('click', async e => {
     const request = e.target.closest('[data-request]');
     if (request) return openRequest({ kind: request.dataset.request, subject: request.dataset.subject, details: request.dataset.details });

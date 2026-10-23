@@ -38,6 +38,7 @@
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <link rel="stylesheet" href="/css/site.css" asp-append-version="true" />
     <link rel="stylesheet" href="/css/app.css" asp-append-version="true" />
+    <link rel="stylesheet" href="/css/navigation.css" asp-append-version="true" />
     <script type="application/ld+json">@Html.Raw(SiteJson.Serialize(Seo.Organization(settings)))</script>
     @if (ViewData["StructuredData"] is object schema)
     { <script type="application/ld+json">@Html.Raw(SiteJson.Serialize(schema))</script> }
@@ -47,18 +48,43 @@
 </head>
 <body>
 <a href="#main" class="skip-link">@L["Անցնել բովանդակությանը"]</a>
-<div class="topbar"><div class="container"><span>@L["Ջրատաքացուցիչներ · Պահեստամասեր · Սպասարկում"]</span><span>@L["Երաշխիք նաև մեր կատարած աշխատանքի համար"]</span></div></div>
+<div class="topbar"><div class="container"><span>@L["Ջրատաքացուցիչներ · Պահեստամասեր · Սպասարկում"]</span><span class="topbar-assurance"><i data-icon="shield"></i>@L["Երաշխիք նաև մեր կատարած աշխատանքի համար"]</span></div></div>
 <header class="header">
     <div class="container header-main">
         <partial name="_Brand" />
         <form class="search-box" action="/catalog" method="get"><input type="hidden" name="lang" value="@L.Language" /><input name="q" aria-label="@L["Որոնել ապրանք կամ պահեստամաս"]" placeholder="@L["Որոնել ապրանք, մոդել կամ պահեստամաս…"]" /><button aria-label="@L["Որոնել"]" type="submit"><i data-icon="search"></i></button></form>
-        <div class="header-actions"><partial name="_LanguageSwitch" /><button type="button" class="callback-button desktop-contact" data-request="callback"><span class="callback-icon"><i data-icon="phone"></i></span><span>@L["Պատվիրել հետադարձ զանգ"]</span><span class="callback-arrow" aria-hidden="true">↗</span></button><button class="icon-btn" type="button" data-action="cart" aria-label="@L["Պատվերի ցանկ"]"><i data-icon="bag"></i><span class="count" id="cart-count" hidden></span></button><button class="icon-btn mobile-menu" type="button" id="menu-toggle" aria-expanded="false" aria-controls="main-nav" aria-label="@L["Բացել մենյուն"]"><i data-icon="menu"></i></button></div>
+        <div class="header-actions">
+            <partial name="_LanguageSwitch" />
+            <button type="button" class="callback-button desktop-contact" data-request="callback"><span class="callback-icon"><i data-icon="phone"></i></span><span>@L["Պատվիրել հետադարձ զանգ"]</span><span class="callback-arrow" aria-hidden="true"><i data-icon="arrow-up-right"></i></span></button>
+            <button class="icon-btn header-cart" type="button" data-action="cart" aria-label="@L["Պատվերի ցանկ"]"><i data-icon="bag"></i><span class="count" id="cart-count" hidden></span></button>
+            <button class="icon-btn mobile-menu" type="button" id="menu-toggle" aria-expanded="false" aria-controls="main-nav" aria-label="@L["Բացել մենյուն"]" data-open-label="@L["Բացել մենյուն"]" data-close-label="@L["Փակել մենյուն"]"><span class="menu-glyph" aria-hidden="true"></span></button>
+        </div>
     </div>
-    <nav id="main-nav" aria-label="@L["Հիմնական մենյու"]" class="container nav">
-        @foreach (var item in new[] { ("/catalog", L["Ջրատաքացուցիչներ"]), ("/parts", L["Պահեստամասեր"]), ("/services", L["Սպասարկում"]), ("/warranty", L["Երաշխիք"]), ("/guide", L["Օգտակար նյութեր"]), ("/contact", L["Կապ"]) })
-        { <a href="@item.Item1" class="@(path.StartsWith(item.Item1) ? "active" : "")">@item.Item2</a> }
-        <button type="button" class="nav-service plain-button" data-request="service"><i data-icon="wrench"></i>@L["Դիմել մասնագետին"]</button>
-    </nav>
+    <div class="navigation-bar">
+        <nav id="main-nav" aria-label="@L["Հիմնական մենյու"]" class="container nav">
+            <div class="nav-mobile-heading"><span>@L["Հիմնական մենյու"]</span><span>JERMIQ</span></div>
+            <div class="nav-links">
+                @foreach (var item in new[] {
+                    (Url: "/catalog", Label: "Ջրատաքացուցիչներ", Icon: "droplets", Featured: true),
+                    (Url: "/parts", Label: "Պահեստամասեր", Icon: "package", Featured: true),
+                    (Url: "/services", Label: "Սպասարկում", Icon: "wrench", Featured: false),
+                    (Url: "/warranty", Label: "Երաշխիք", Icon: "shield", Featured: false),
+                    (Url: "/guide", Label: "Օգտակար նյութեր", Icon: "book", Featured: false),
+                    (Url: "/contact", Label: "Կապ", Icon: "message", Featured: false) })
+                {
+                    var active = path.Equals(item.Url, StringComparison.OrdinalIgnoreCase) || path.StartsWith(item.Url + "/", StringComparison.OrdinalIgnoreCase);
+                    <a href="@L.Link(item.Url)" class="nav-link @(item.Featured ? "nav-link-featured" : "") @(active ? "active" : "")" aria-current="@(active ? "page" : null)">
+                        <span class="nav-link-icon"><i data-icon="@item.Icon"></i></span><span>@L[item.Label]</span><span class="nav-link-arrow" aria-hidden="true"><i data-icon="chevron-right"></i></span>
+                    </a>
+                }
+            </div>
+            <div class="nav-support">
+                <span class="nav-support-caption">@L["Օգնե՞նք ընտրության հարցում"]</span>
+                <button type="button" class="nav-service" data-request="service"><i data-icon="wrench"></i><span>@L["Դիմել մասնագետին"]</span><span aria-hidden="true"><i data-icon="arrow-up-right"></i></span></button>
+                <button type="button" class="nav-callback plain-button" data-request="callback"><i data-icon="phone"></i>@L["Պատվիրել հետադարձ զանգ"]</button>
+            </div>
+        </nav>
+    </div>
 </header>
 
 <main id="main">@RenderBody()</main>
