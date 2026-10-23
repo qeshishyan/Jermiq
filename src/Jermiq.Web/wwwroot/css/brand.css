@@ -1,0 +1,46 @@
+/* TERMOMASTER identity: one mark and wordmark across the storefront and office. */
+:root{--brand-navy:#163650;--brand-orange:#ff7b19;--orange:var(--brand-orange)}
+.termomaster-brand{display:inline-flex;align-items:center;gap:12px;flex-shrink:0;min-width:0}
+.termomaster-brand>img{display:block;flex:none;object-fit:contain;width:40px;height:60px}
+.termomaster-brand .brand-copy{display:block;min-width:0}
+.termomaster-brand .brand-wordmark{display:flex;white-space:nowrap;font-family:Arial,sans-serif;font-size:26px;line-height:1.08;font-weight:900;letter-spacing:-.055em}
+.brand-termo{color:var(--brand-navy)}.brand-master{color:var(--brand-orange)}
+.termomaster-brand .brand-copy>small{display:block;font-size:9px;line-height:1.5;font-weight:600;letter-spacing:0;color:#506777;margin-top:6px;white-space:nowrap}
+.header-main>.header-language{display:flex;justify-content:center;flex-shrink:0}
+.header-language .language-switch{gap:2px;padding:3px;border:1px solid #e2e9eb;border-radius:9px;background:#f8fafa}
+.header-language .language-switch a{display:flex;align-items:center;justify-content:center;min-width:28px;min-height:30px;padding:4px 5px;font-size:10px;color:#647984;border-radius:6px}
+.header-language .language-switch a[aria-current=true]{background:#fff;color:#163650;box-shadow:0 1px 4px #14354b12;font-weight:700}
+.header-main{gap:22px}.header-main .search-box{max-width:none}
+.footer .termomaster-brand .brand-termo,.office-brand.termomaster-brand .brand-termo{color:#f5f8fa}
+.footer .termomaster-brand .brand-copy>small{color:#b7cbd5}
+.footer .termomaster-brand{margin-bottom:18px}.footer-brand-promise{display:block;color:#ffb16d;font-size:14px;line-height:1.7;margin-top:14px}
+.office-brand.termomaster-brand{gap:9px;letter-spacing:0;margin-inline:6px}
+.office-brand.termomaster-brand>img{width:28px;height:43px}
+.office-brand.termomaster-brand .brand-wordmark{font-size:20px}
+.office-brand.termomaster-brand .brand-copy>small{color:#9fb7c4;font-size:9px;margin-top:7px}
+.page-loading-card .loading-wordmark{display:flex;white-space:nowrap;letter-spacing:-.04em;font-size:13px;line-height:1.15}
+.page-loading-card>img{width:23px;height:34px;object-fit:contain}
+@media(max-width:1180px){.header-main{gap:15px}.header-main .termomaster-brand .brand-wordmark{font-size:23px}.header-main .termomaster-brand>img{width:33px;height:49px}.header-main .termomaster-brand .brand-copy>small{font-size:8px}}
+@media(max-width:900px){
+ .header-main{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:12px 10px;padding-top:13px;padding-bottom:13px}
+ .header-main .termomaster-brand{grid-column:1;grid-row:1;gap:8px;padding:0;justify-self:start}
+ .header-main .termomaster-brand .brand-wordmark{font-size:20px}
+ .header-main .termomaster-brand>img{width:28px;height:43px}
+ .header-main .termomaster-brand .brand-copy>small{font-size:7.5px;margin-top:4px}
+ .header-main .header-actions{grid-column:2;grid-row:1;margin:0;gap:8px}
+ .header-main .header-actions .store-header-action{min-width:24px}
+ .header-main .header-actions .store-action-icon{width:24px}
+ .header-main .header-actions .store-header-action[href^="/compare"]{display:none}
+ .header-main .search-box{grid-column:1;grid-row:2;width:100%;min-width:0;max-width:none;margin:0}
+ .header-main>.header-language{grid-column:2;grid-row:2;justify-self:end}
+ .header-language .language-switch{gap:1px;padding:2px}
+ .header-language .language-switch a{min-width:25px;min-height:30px;padding:3px;font-size:9px}
+ .footer .termomaster-brand .brand-wordmark{font-size:26px}
+ .office-brand.termomaster-brand{margin:0 0 16px}
+}
+@media(max-width:360px){.header-main{gap:10px 7px}.header-main .termomaster-brand{gap:6px}.header-main .termomaster-brand .brand-wordmark{font-size:17px}.header-main .termomaster-brand>img{width:23px;height:36px}.header-main .termomaster-brand .brand-copy>small{font-size:6.5px}.header-main .header-actions{gap:5px}.header-main .mobile-menu{min-width:30px;min-height:34px}.header-language .language-switch a{min-width:23px}}
+@media(forced-colors:active){.brand-termo,.brand-master{color:CanvasText}}
+
+.orders-brand{margin-bottom:18px}.orders-brand .termomaster-brand .brand-wordmark{font-size:24px}.orders-brand .termomaster-brand>img{width:30px;height:44px}
+
+@media(max-width:360px){.header-main .termomaster-brand .brand-copy>small{display:none}}

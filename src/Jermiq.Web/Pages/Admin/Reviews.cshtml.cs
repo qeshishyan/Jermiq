@@ -9,7 +9,7 @@ public sealed class ReviewsModel(ContentLocalizer localizer) : PageModel
 {
     public void OnGet()
     {
-        ViewData["Title"] = localizer["Կարծիքների կառավարում"] + " | Jermiq";
+        ViewData["Title"] = localizer["Կարծիքների կառավարում"] + " | TERMOMASTER";
         ViewData["NoIndex"] = true;
     }
 }

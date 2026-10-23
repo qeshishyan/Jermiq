@@ -31,7 +31,7 @@ public sealed class LoginModel(SignInManager<IdentityUser> signIn, UserManager<I
     }
     private void SetMetadata()
     {
-        ViewData["Title"] = localizer["Կառավարման մուտք | Ջերմիք"];
+        ViewData["Title"] = localizer["Կառավարման մուտք | TERMOMASTER"];
         ViewData["NoIndex"] = true;
         ViewData["Canonical"] = "/admin/login";
     }

@@ -2,7 +2,7 @@
 @{ var children = Model.Children(Model.CategoryId).ToList(); if (Model.CategoryId.Length == 0) children = Model.RootCategories.Where(x => Model.PageName != "parts" || x.Id != "water-heaters").ToList(); var facets = Model.CatalogProducts.SelectMany(x => x.Specs).Where(x => x.Key.Length > 0 && x.Value.Length > 0).GroupBy(x => x.Key).Where(x => x.Select(v => v.Value).Distinct().Count() > 1).OrderBy(x => x.Key).Take(8).ToList(); }
 <div class="container store-catalog-page" data-store-catalog>
     <nav class="breadcrumbs" aria-label="@L["Էջի ուղին"]"><a href="/">@L["Գլխավոր"]</a><span>/</span><a href="/catalog">@L["Կատալոգ"]</a>@if (Model.SelectedCategory is not null) { <span>/</span><span>@Model.SelectedCategory.Title</span> }</nav>
-    <div class="store-page-heading"><div><div class="eyebrow">@L["Ջերմիք · Կատալոգ"]</div><h1>@Model.Title</h1><p>@Model.Description</p></div><a href="/selection" class="btn btn-outline"><i data-icon="search-check"></i>@L["Ընտրել մոդելով"]</a></div>
+    <div class="store-page-heading"><div><div class="eyebrow">@L["TERMOMASTER · Կատալոգ"]</div><h1>@Model.Title</h1><p>@Model.Description</p></div><a href="/selection" class="btn btn-outline"><i data-icon="search-check"></i>@L["Ընտրել մոդելով"]</a></div>
     @if (children.Count > 0) { <div class="store-category-pills" aria-label="@L["Ենթակատեգորիաներ"]">@foreach (var category in children) { <a href="@Model.CategoryUrl(category)">@category.Title <span aria-hidden="true">›</span></a> }</div> }
     <div class="store-catalog-layout">
         <aside class="store-filter-sidebar"><details class="store-mobile-filters" open><summary><i data-icon="sliders"></i>@L["Կատեգորիաներ և ֆիլտրեր"] <span aria-hidden="true">⌄</span></summary><div class="store-filter-body">

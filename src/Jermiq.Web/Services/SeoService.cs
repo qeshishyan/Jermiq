@@ -23,8 +23,8 @@ public sealed class SeoService
     {
         var result = new Dictionary<string, object>
         {
-            ["@context"] = "https://schema.org", ["@type"] = "Organization", ["name"] = localizer["Ջերմիք"],
-            ["url"] = BaseUrl, ["logo"] = Url("/logo.svg")
+            ["@context"] = "https://schema.org", ["@type"] = "Organization", ["name"] = BrandIdentity.Name,
+            ["url"] = BaseUrl, ["logo"] = Url(BrandIdentity.LogoPath)
         };
         if (!string.IsNullOrWhiteSpace(s.Phone)) result["telephone"] = s.Phone;
         if (!string.IsNullOrWhiteSpace(s.Email)) result["email"] = s.Email;
@@ -57,7 +57,7 @@ public sealed class SeoService
     {
         ["@context"] = "https://schema.org", ["@type"] = "Article", ["headline"] = a.Title,
         ["description"] = a.Intro, ["inLanguage"] = localizer.Language, ["mainEntityOfPage"] = PageUrl("/guide/" + a.Slug),
-        ["author"] = new Dictionary<string, string> { ["@type"] = "Organization", ["name"] = localizer["Ջերմիք"] }
+        ["author"] = new Dictionary<string, string> { ["@type"] = "Organization", ["name"] = BrandIdentity.Name }
     };
 }
 

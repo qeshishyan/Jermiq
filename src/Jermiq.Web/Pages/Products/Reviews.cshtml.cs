@@ -17,7 +17,7 @@ public sealed class ReviewsModel(CatalogService catalog, AppDbContext db, Conten
         if (product is null) return NotFound();
         Product = product;
         Reviews = await ProductReviewEndpoints.GetApprovedAsync(db, slug, p ?? 1, ct);
-        ViewData["Title"] = localizer["Կարծիքներ"] + " · " + product.Title + " | Jermiq";
+        ViewData["Title"] = localizer["Կարծիքներ"] + " · " + product.Title + " | TERMOMASTER";
         ViewData["Description"] = localizer["Ապրանքի մասին գնորդների կարծիքներ և գնահատականներ։"];
         ViewData["Canonical"] = "/products/" + slug + "/reviews";
         ViewData["NoIndex"] = true;

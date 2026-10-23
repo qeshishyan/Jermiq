@@ -89,7 +89,7 @@ public static class BackOfficeEndpoints
             }
             var csv = new StringBuilder("\uFEFFID,Type,Name,Phone,Email,Status,Created,Message\r\n");
             foreach (var l in leads) csv.AppendLine(string.Join(',', new[] { l.Id, l.Kind, l.Name, l.Phone, l.Email, l.Status, DateTimeOffset.FromUnixTimeMilliseconds(l.CreatedAt).ToString("O"), l.Message }.Select(Cell)));
-            return Results.File(Encoding.UTF8.GetBytes(csv.ToString()), "text/csv; charset=utf-8", "jermiq-requests.csv");
+            return Results.File(Encoding.UTF8.GetBytes(csv.ToString()), "text/csv; charset=utf-8", "termomaster-requests.csv");
         }).RequireAuthorization("BackOffice");
         app.MapGet("/api/admin/cms", async (AppDbContext db, ContentLocalizer l, CatalogService catalog, StoreCatalogService store, CancellationToken ct) =>
         {
@@ -249,6 +249,7 @@ public static class BackOfficeEndpoints
         if (edit.Texts is not null) foreach (var pair in edit.Texts) content.Texts[pair.Key] = pair.Value;
         if (edit.Services is not null) content.Services = edit.Services;
         if (edit.Articles is not null) content.Articles = edit.Articles;
+        BrandIdentity.Apply(content);
         content.Revision++;
         if (row is null) db.Settings.Add(row = new SettingRecord { Key = "cms" });
         row.Value = SiteJson.Serialize(content);

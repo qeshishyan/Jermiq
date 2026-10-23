@@ -68,6 +68,9 @@ public sealed class CatalogService(AppDbContext db, ContentLocalizer localizer, 
     public async Task<SiteSettings> GetSettingsAsync(CancellationToken ct = default, bool localized = true)
     {
         var s = SiteJson.Deserialize<SiteSettings>((await db.Settings.AsNoTracking().SingleAsync(x => x.Key == "site", ct)).Value);
+        s.Address = BrandIdentity.Text(s.Address); s.Hours = BrandIdentity.Text(s.Hours);
+        s.Warranty = BrandIdentity.Text(s.Warranty); s.Delivery = BrandIdentity.Text(s.Delivery);
+        s.ServicePrices = s.ServicePrices.ToDictionary(x => x.Key, x => BrandIdentity.Text(x.Value));
         if (localized)
         {
             s.Address = localizer[s.Address]; s.Hours = localizer[s.Hours]; s.Warranty = localizer[s.Warranty]; s.Delivery = localizer[s.Delivery];

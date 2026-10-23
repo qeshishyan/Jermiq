@@ -131,7 +131,7 @@
   const informationPageNames = {
     delivery: 'Առաքում և ինքնավերցում', payment: 'Վճարման պայմաններ', returns: 'Վերադարձ և փոխանակում',
     warranty: 'Երաշխիք', terms: 'Օգտագործման պայմաններ', privacy: 'Գաղտնիություն',
-    about: 'Ջերմիքի մասին', ordering: 'Ինչպես պատվիրել'
+    about: 'TERMOMASTER-ի մասին', ordering: 'Ինչպես պատվիրել'
   };
   const fieldValue = (row, key) => $('[data-information-field="' + key + '"]', row);
   const infoTextField = (key, label, value, maximum, multiline = false, required = false) => `<label class="field${multiline ? ' full' : ''}"><span>${escape(t(label))}${required ? ' *' : ''}</span>${multiline ? `<textarea data-information-field="${key}" rows="4" maxlength="${maximum}"${required ? ' required' : ''}>${escape(value || '')}</textarea>` : `<input data-information-field="${key}" maxlength="${maximum}" value="${escape(value || '')}"${required ? ' required' : ''} />`}</label>`;

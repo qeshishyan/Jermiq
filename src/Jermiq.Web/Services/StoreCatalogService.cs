@@ -24,6 +24,7 @@ public sealed class StoreCatalogService(AppDbContext db, ContentLocalizer locali
         var result = row is null ? StaticContent.Read<StoreCatalogConfiguration>(environment, SettingsKey)
             : SiteJson.Deserialize<StoreCatalogConfiguration>(row.Value);
         result.Information ??= StaticContent.Read<StoreInformationContent>(environment, "store-information");
+        BrandIdentity.Apply(result);
         if (!localized) return result;
         result.Categories = VisibleCategories(result.Categories);
         var visibleIds = result.Categories.Select(x => x.Id).ToHashSet(StringComparer.Ordinal);

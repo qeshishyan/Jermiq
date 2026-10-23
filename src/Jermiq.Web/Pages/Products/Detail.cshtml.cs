@@ -28,7 +28,7 @@ public sealed class DetailModel(CatalogService catalog, StoreCatalogService stor
         Alternatives = Resolve(product.AlternativeProductSlugs, products);
         Bundle = Resolve(product.BundleProductSlugs, products);
         CompatibleModels = Store.EquipmentModels.Where(x => product.CompatibleModelIds.Contains(x.Id)).OrderBy(x => x.Brand).ThenBy(x => x.Series).ThenBy(x => x.Name).ToList();
-        ViewData["Title"] = product.Title + localizer[" | Ջերմիք"];
+        ViewData["Title"] = product.Title + localizer[" | TERMOMASTER"];
         ViewData["Description"] = product.Description;
         ViewData["Canonical"] = "/products/" + slug;
         ViewData["Image"] = product.Image;

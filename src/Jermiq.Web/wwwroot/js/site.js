@@ -1,4 +1,4 @@
-/* JERMIQ interactions; no JavaScript build tool or external CDN is required. */
+/* TERMOMASTER interactions; no JavaScript build tool or external CDN is required. */
 (() => {
   'use strict';
   const $ = (s, root = document) => root.querySelector(s);

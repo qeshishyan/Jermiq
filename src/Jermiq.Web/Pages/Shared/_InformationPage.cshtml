@@ -3,14 +3,14 @@
     var information = Model.Store.Information;
     var infoPage = information?.Pages.FirstOrDefault(x => x.Id == Model.PageName);
     var overview = Model.PageName switch { "delivery" => Model.Settings.Delivery, "warranty" => Model.Settings.Warranty, "payment" => Model.Store.PaymentText, "about" => Model.Store.AboutText, _ => "" };
-    var links = new[] { ("ordering", "Ինչպես պատվիրել"), ("delivery", "Առաքում և ինքնավերցում"), ("payment", "Վճարման պայմաններ"), ("returns", "Վերադարձ և փոխանակում"), ("warranty", "Երաշխիք"), ("terms", "Գնման պայմաններ"), ("privacy", "Գաղտնիության պայմաններ"), ("about", "Ջերմիքի մասին") };
+    var links = new[] { ("ordering", "Ինչպես պատվիրել"), ("delivery", "Առաքում և ինքնավերցում"), ("payment", "Վճարման պայմաններ"), ("returns", "Վերադարձ և փոխանակում"), ("warranty", "Երաշխիք"), ("terms", "Գնման պայմաններ"), ("privacy", "Գաղտնիության պայմաններ"), ("about", "TERMOMASTER-ի մասին") };
     var icon = Model.PageName switch { "delivery" => "package", "payment" => "file-check", "warranty" => "shield", "returns" => "refresh", "privacy" => "shield", "about" => "wrench", _ => "file-check" };
     var culture = System.Globalization.CultureInfo.GetCultureInfo(L.Culture);
 }
 <div class="container information-page" data-information-page="@Model.PageName">
     <nav class="breadcrumbs" aria-label="@L["Էջի ուղին"]"><a href="/">@L["Գլխավոր"]</a><span>/</span><span>@Model.Title</span></nav>
     <header class="information-heading">
-        <div><div class="eyebrow">@L["Ջերմիք · Օգտակար տեղեկություններ"]</div><h1>@Model.Title</h1><p>@(infoPage?.Intro ?? Model.Description)</p></div>
+        <div><div class="eyebrow">@L["TERMOMASTER · Օգտակար տեղեկություններ"]</div><h1>@Model.Title</h1><p>@(infoPage?.Intro ?? Model.Description)</p></div>
         <span class="information-heading-icon" aria-hidden="true"><i data-icon="@icon"></i></span>
     </header>
     <div class="information-layout">

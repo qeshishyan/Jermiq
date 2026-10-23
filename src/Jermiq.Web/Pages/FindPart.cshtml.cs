@@ -35,7 +35,7 @@ public sealed class FindPartModel(CatalogService catalog, StoreCatalogService st
                 : Products.Where(x => MatchesCode(x, Query)).OrderByDescending(x => ExactCode(x, Query)).ThenByDescending(x => ProductSearch.Normalize(x.Title).Contains(ProductSearch.Normalize(Query), StringComparison.Ordinal));
             var all = matches.ToList(); ResultCount = all.Count; Results = all.Take(12).ToList();
         }
-        ViewData["Title"] = localizer["Գտնենք ճիշտ մասը"] + localizer[" | Ջերմիք"];
+        ViewData["Title"] = localizer["Գտնենք ճիշտ մասը"] + localizer[" | TERMOMASTER"];
         ViewData["Description"] = localizer["Կոդով, սարքի մոդելով կամ լուսանկարով՝ սկսենք այն տվյալից, որն ունեք։"];
         ViewData["Canonical"] = "/find-part";
         ViewData["NoIndex"] = Query.Length > 0 || ModelId.Length > 0;

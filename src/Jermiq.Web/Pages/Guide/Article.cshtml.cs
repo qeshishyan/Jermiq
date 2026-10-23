@@ -13,7 +13,7 @@ public sealed class ArticleModel(StaticContent content, SeoService seo, ContentL
         var article = content.Articles.SingleOrDefault(x => x.Slug == slug);
         if (article is null) return NotFound();
         Article = article;
-        ViewData["Title"] = article.Title + localizer[" | Ջերմիք"];
+        ViewData["Title"] = article.Title + localizer[" | TERMOMASTER"];
         ViewData["Description"] = article.Intro;
         ViewData["Canonical"] = "/guide/" + slug;
         ViewData["OgType"] = "article";

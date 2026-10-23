@@ -5,7 +5,7 @@ public sealed class IndexModel(ContentLocalizer localizer) : PageModel
 {
     public void OnGet()
     {
-        ViewData["Title"] = localizer["Կառավարման բաժին | Ջերմիք"];
+        ViewData["Title"] = localizer["Կառավարման բաժին | TERMOMASTER"];
         ViewData["Canonical"] = "/admin";
         ViewData["NoIndex"] = true;
     }

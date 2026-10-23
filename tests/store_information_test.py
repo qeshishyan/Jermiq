@@ -95,8 +95,16 @@ def main():
             legacy.pop('information', None)
             legacy['home']['title'] = 'QA existing store title'
             legacy['paymentText'] = 'QA existing payment agreement'
+            legacy['home']['eyebrow'] = 'Jermiq · QA existing choice'
+            legacy['aboutText'] = 'Ջերմիք՝ QA existing store description'
             db.execute('UPDATE Settings SET Value = ? WHERE Key = ?',
                        (json.dumps(legacy, ensure_ascii=False), 'store-catalog'))
+            cms = dict(texts={'Ջերմիքի մասին': {
+                'hy': 'QA Ջերմիքի մասին', 'en': 'QA About Jermiq', 'ru': 'QA О Jermiq'}},
+                services=json.loads((ROOT / 'src/Jermiq.Web/SeedData/services.json').read_text()),
+                articles=json.loads((ROOT / 'src/Jermiq.Web/SeedData/articles.json').read_text()), revision=7)
+            db.execute('INSERT OR REPLACE INTO Settings (Key, Value) VALUES (?, ?)',
+                       ('cms', json.dumps(cms, ensure_ascii=False)))
 
         with open(Path(directory) / 'server.log', 'w+') as log:
             process = subprocess.Popen(command + ['--', '--urls', base], cwd=ROOT, env=env,
@@ -151,13 +159,23 @@ def main():
                 check('Old saved homepage and payment copy are preserved',
                       public['home']['title'] == legacy['home']['title'] and
                       public['paymentText'] == legacy['paymentText'])
+                check('Existing store copy adopts the new brand without dropping custom wording',
+                      public['home']['eyebrow'] == 'TERMOMASTER · QA existing choice' and
+                      public['aboutText'] == 'TERMOMASTER՝ QA existing store description')
                 with sqlite3.connect(database) as db:
                     stored = json.loads(db.execute('SELECT Value FROM Settings WHERE Key = ?',
                                                    ('store-catalog',)).fetchone()[0])
                 check('Reading default information does not overwrite old saved JSON',
                       'information' not in stored and stored['home']['title'] == legacy['home']['title'])
+                check('Rebranding preserves the persisted legacy snapshot until its owner saves',
+                      stored['home']['eyebrow'] == legacy['home']['eyebrow'] and
+                      stored['aboutText'] == legacy['aboutText'])
                 rates = public['information']['deliveryOptions']
                 homepage, _ = page('/?lang=hy')
+                check('Public metadata and accessible brand use TERMOMASTER',
+                      'content="TERMOMASTER"' in homepage and
+                      'termomaster-mark.png' in homepage and 'termomaster-social.png' in homepage and
+                      'TERMO</span><span class="brand-master">MASTER' in homepage)
                 client_texts = json.loads(re.search(
                     r'<script type="application/json" id="site-translations">(.*?)</script>',
                     homepage, re.S).group(1))
@@ -196,6 +214,12 @@ def main():
                 login_result = response.read().decode()
                 check('Isolated information administrator signs in', response.status == 200 and 'id="admin-app"' in login_result)
                 token = html.unescape(re.search(r'<meta name="csrf-token" content="([^"]+)"', login_result).group(1))
+                saved_cms = data('/api/admin/cms')
+                check('Legacy CMS translation keys and customized values adopt current branding',
+                      'Ջերմիքի մասին' not in saved_cms['texts'] and
+                      saved_cms['texts']['TERMOMASTER-ի մասին']['en'] == 'QA About TERMOMASTER' and
+                      saved_cms['texts']['TERMOMASTER-ի մասին']['hy'] == 'QA TERMOMASTER-ի մասին' and
+                      saved_cms['revision'] == 7)
                 check('Anonymous information mutation remains denied',
                       request('/api/admin/store-catalog', public, token, 'PUT', opener=anonymous)[0] in (400, 401))
                 config = data('/api/admin/store-catalog')

@@ -7,7 +7,7 @@ public sealed class OrdersModel(ContentLocalizer localizer) : PageModel
 {
     public void OnGet()
     {
-        ViewData["Title"] = localizer["Պատվերների կառավարում"] + " | Jermiq";
+        ViewData["Title"] = localizer["Պատվերների կառավարում"] + " | TERMOMASTER";
         ViewData["NoIndex"] = true;
         ViewData["Canonical"] = "/admin/orders";
     }

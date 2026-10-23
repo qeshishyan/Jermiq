@@ -5,13 +5,13 @@
 @{
     var settings = await Catalog.GetSettingsAsync(Context.RequestAborted);
     var store = await StoreCatalog.GetAsync(Context.RequestAborted);
-    var title = ViewData["Title"] as string ?? L["Ջերմիք"];
+    var title = ViewData["Title"] as string ?? BrandIdentity.Name;
     var description = ViewData["Description"] as string ?? L["Ջրատաքացուցիչներ, պահեստամասեր և մասնագիտական սպասարկում։"];
     var canonical = Seo.PageUrl(ViewData["Canonical"] as string ?? Context.Request.Path.Value ?? "/");
     var noIndex = !Seo.IndexingEnabled || (ViewData["NoIndex"] as bool? ?? false);
     var csrf = Antiforgery.GetAndStoreTokens(Context).RequestToken;
     var path = Context.Request.Path.Value ?? "/";
-    var ogImage = Seo.Url(ViewData["Image"] as string ?? "/images/hero.webp");
+    var ogImage = Seo.Url(ViewData["Image"] as string ?? BrandIdentity.SocialImagePath);
 }
 <!DOCTYPE html>
 <html lang="@L.Language">
@@ -27,7 +27,7 @@
     { <link rel="alternate" hreflang="@language" href="@Seo.Url(L.Link(ViewData["Canonical"] as string ?? path, language))" /> }
     <meta property="og:type" content="@(ViewData["OgType"] as string ?? "website")" />
     <meta property="og:locale" content="@(L.Language == "en" ? "en_US" : L.Language == "ru" ? "ru_RU" : "hy_AM")" />
-    <meta property="og:site_name" content="@L["Ջերմիք"]" />
+    <meta property="og:site_name" content="@BrandIdentity.Name" />
     <meta property="og:title" content="@title" />
     <meta property="og:description" content="@description" />
     <meta property="og:url" content="@canonical" />
@@ -36,8 +36,10 @@
     <meta name="twitter:title" content="@title" />
     <meta name="twitter:description" content="@description" />
     <meta name="twitter:image" content="@ogImage" />
-    <meta name="theme-color" content="#14354b" />
-    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <meta name="theme-color" content="#163650" />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" asp-append-version="true" />
+    <link rel="apple-touch-icon" href="/images/brand/termomaster-touch.png" asp-append-version="true" />
+    <meta name="application-name" content="@BrandIdentity.Name" />
     <link rel="stylesheet" href="/css/site.css" asp-append-version="true" />
     <link rel="stylesheet" href="/css/app.css" asp-append-version="true" />
     <link rel="stylesheet" href="/css/navigation.css" asp-append-version="true" />
@@ -46,6 +48,7 @@
     <link rel="stylesheet" href="/css/marketing-motion.css" asp-append-version="true" />
     <link rel="stylesheet" href="/css/page-loading.css" asp-append-version="true" />
     <link rel="stylesheet" href="/css/store-information.css" asp-append-version="true" />
+    <link rel="stylesheet" href="/css/brand.css" asp-append-version="true" />
     <script type="application/ld+json">@Html.Raw(SiteJson.Serialize(Seo.Organization(settings)))</script>
     @if (ViewData["StructuredData"] is object schema)
     { <script type="application/ld+json">@Html.Raw(SiteJson.Serialize(schema))</script> }
@@ -55,15 +58,15 @@
 </head>
 <body>
 <a href="#main" class="skip-link">@L["Անցնել բովանդակությանը"]</a>
-<div class="page-loading" data-page-loading hidden aria-hidden="true"><div class="page-loading-track"></div><div class="page-loading-card"><img src="/logo.svg" alt="" width="24" height="30" /><span><strong>JERMIQ</strong><small>@L["Բեռնվում է…"]</small></span><span class="page-loading-dots"><i></i><i></i><i></i></span></div></div>
+<div class="page-loading" data-page-loading hidden aria-hidden="true"><div class="page-loading-track"></div><div class="page-loading-card"><img src="@BrandIdentity.MarkPath" asp-append-version="true" alt="" width="24" height="34" /><span><strong class="loading-wordmark"><span class="brand-termo">TERMO</span><span class="brand-master">MASTER</span></strong><small>@L["Բեռնվում է…"]</small></span><span class="page-loading-dots"><i></i><i></i><i></i></span></div></div>
 <span class="page-loading-announcement" data-page-loading-status data-message="@L["Բեռնվում է…"]" role="status" aria-live="polite" aria-atomic="true"></span>
 <div class="topbar"><div class="container"><span>@(settings.Address.Length > 0 ? settings.Address : L["Ջրատաքացուցիչներ · Պահեստամասեր · Սպասարկում"])</span><div class="store-utility-links"><a href="/delivery">@L["Առաքում"]</a><a href="/payment">@L["Վճարում"]</a><a href="/warranty">@L["Երաշխիք"]</a><a href="/contact">@L["Կապ"]</a></div></div></div>
 <header class="header">
     <div class="container header-main">
         <partial name="_Brand" />
         <form class="search-box" action="/catalog" method="get"><input type="hidden" name="lang" value="@L.Language" /><input name="q" type="search" maxlength="200" aria-label="@L["Որոնել ապրանք կամ պահեստամաս"]" placeholder="@L["Որոնել մաս, մոդել կամ արտիկուլ…"]" /><button aria-label="@L["Որոնել"]" type="submit"><i data-icon="search"></i></button></form>
+        <div class="header-language"><partial name="_LanguageSwitch" /></div>
         <div class="header-actions">
-            <partial name="_LanguageSwitch" />
             <a class="store-header-action" href="/favorites"><span class="store-action-icon"><i data-icon="heart"></i><span class="count" id="favorites-count" hidden></span></span><span>@L["Ընտրյալներ"]</span></a>
             <a class="store-header-action" href="/compare"><span class="store-action-icon"><i data-icon="scale"></i></span><span>@L["Համեմատել"]</span></a>
             <a class="store-header-action" href="/cart"><span class="store-action-icon"><i data-icon="bag"></i><span class="count" id="cart-count" hidden></span></span><span>@L["Զամբյուղ"]</span></a>
@@ -72,7 +75,7 @@
     </div>
     <div class="navigation-bar">
         <nav id="main-nav" aria-label="@L["Հիմնական մենյու"]" class="container nav">
-            <div class="nav-mobile-heading"><span>@L["Հիմնական մենյու"]</span><span>JERMIQ</span></div>
+            <div class="nav-mobile-heading"><span>@L["Հիմնական մենյու"]</span><span>TERMOMASTER</span></div>
             <div class="nav-links">
                 <details class="store-mega"><summary><i data-icon="package"></i>@L["Կատեգորիաներ"] <span aria-hidden="true">⌄</span></summary><div class="store-mega-panel">@foreach (var category in store.Categories.Where(x => x.ParentId.Length == 0).OrderBy(x => x.SortOrder)) { <div><a href="@("/catalog?category=" + Uri.EscapeDataString(category.Id))"><strong>@category.Title</strong></a>@foreach (var child in store.Categories.Where(x => x.ParentId == category.Id).OrderBy(x => x.SortOrder)) { <a href="@("/catalog?category=" + Uri.EscapeDataString(child.Id))">@child.Title</a> }</div> }</div></details>
                 @foreach (var item in new[] {
@@ -98,13 +101,13 @@
 </header>
 
 <main id="main">@RenderBody()</main>
-<footer class="footer"><div class="container"><div class="footer-grid"><div><partial name="_Brand" /><p>@L["Տաք ջրի հարցերով՝ ընտրությունից մինչև սպասարկում։ Օգնում ենք ընտրել սարքը, գտնել պահեստամասը և պահպանել սարքի աշխատանքը։"]</p></div><div><h3>@L["Տեսականի և ծառայություններ"]</h3><div class="footer-links"><a href="/catalog?category=water-heaters">@L["Ջրատաքացուցիչներ"]</a><a href="/parts">@L["Պահեստամասեր"]</a><a href="/find-part">@L["Գտնենք ճիշտ մասը"]</a><a href="/services">@L["Վերանորոգում և սպասարկում"]</a><a href="/warranty">@L["Երաշխիքային պայմաններ"]</a><a href="/delivery">@L["Առաքում"]</a><a href="/payment">@L["Վճարում"]</a><a href="/ordering">@L["Ինչպես պատվիրել"]</a><a href="/returns">@L["Վերադարձ և փոխանակում"]</a><a href="/terms">@L["Օգտագործման պայմաններ"]</a><a href="/about">@L["Ջերմիքի մասին"]</a></div></div><div><h3>@L["Կապ մեզ հետ"]</h3><div class="footer-links">
+<footer class="footer"><div class="container"><div class="footer-grid"><div><partial name="_Brand" /><p>@L[BrandIdentity.Description]</p><strong class="footer-brand-promise">@L[BrandIdentity.Promise]</strong></div><div><h3>@L["Տեսականի և ծառայություններ"]</h3><div class="footer-links"><a href="/catalog?category=water-heaters">@L["Ջրատաքացուցիչներ"]</a><a href="/parts">@L["Պահեստամասեր"]</a><a href="/find-part">@L["Գտնենք ճիշտ մասը"]</a><a href="/services">@L["Վերանորոգում և սպասարկում"]</a><a href="/warranty">@L["Երաշխիքային պայմաններ"]</a><a href="/delivery">@L["Առաքում"]</a><a href="/payment">@L["Վճարում"]</a><a href="/ordering">@L["Ինչպես պատվիրել"]</a><a href="/returns">@L["Վերադարձ և փոխանակում"]</a><a href="/terms">@L["Օգտագործման պայմաններ"]</a><a href="/about">@L["TERMOMASTER-ի մասին"]</a></div></div><div><h3>@L["Կապ մեզ հետ"]</h3><div class="footer-links">
     @if (settings.Phone.Length > 0) { <a href="tel:@System.Text.RegularExpressions.Regex.Replace(settings.Phone, "[^+0-9]", "")">@settings.Phone</a> }
     @if (settings.Email.Length > 0) { <a href="mailto:@settings.Email">@settings.Email</a> }
     @if (settings.Address.Length > 0) { <span>@settings.Address</span> }
     <button type="button" class="plain-button text-left" data-request="question">@L["Գրել հարց կամ հաղորդագրություն"]</button><button type="button" class="plain-button text-left" data-request="callback">@L["Խնդրել հետադարձ զանգ"]</button>
     @if (settings.Hours.Length > 0) { <span>@settings.Hours</span> }
-</div></div></div><div class="footer-bottom"><span>© @DateTime.UtcNow.Year @L["Ջերմիք"]</span><div class="actions"><a href="/privacy">@L["Գաղտնիություն"]</a><a href="/terms">@L["Օգտագործման պայմաններ"]</a><a href="/admin">@L["Կառավարում"]</a></div></div></div></footer>
+</div></div></div><div class="footer-bottom"><span>© @DateTime.UtcNow.Year @BrandIdentity.Name</span><div class="actions"><a href="/privacy">@L["Գաղտնիություն"]</a><a href="/terms">@L["Օգտագործման պայմաններ"]</a><a href="/admin">@L["Կառավարում"]</a></div></div></div></footer>
 <button type="button" class="floating-help" data-request="question"><i data-icon="message"></i><span>@L["Հարց ունե՞ք"]</span></button>
 <div class="mobile-dock">
     @if (settings.Phone.Length > 0) { <a class="btn btn-outline" href="tel:@System.Text.RegularExpressions.Regex.Replace(settings.Phone, "[^+0-9]", "")"><i data-icon="phone"></i>@L["Զանգել"]</a> }

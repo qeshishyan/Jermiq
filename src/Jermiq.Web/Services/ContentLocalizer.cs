@@ -37,10 +37,11 @@ public sealed class ContentLocalizer(CmsDefaults defaults)
     public string this[string source] => Translate(source);
     public string Translate(string source)
     {
+        source = BrandIdentity.Text(source);
         if (Content.Texts.TryGetValue(source, out var values))
         {
-            if (values.TryGetValue(Language, out var translated) && !string.IsNullOrWhiteSpace(translated)) return translated;
-            if (values.TryGetValue("hy", out var original) && !string.IsNullOrWhiteSpace(original)) return original;
+            if (values.TryGetValue(Language, out var translated) && !string.IsNullOrWhiteSpace(translated)) return BrandIdentity.Text(translated);
+            if (values.TryGetValue("hy", out var original) && !string.IsNullOrWhiteSpace(original)) return BrandIdentity.Text(original);
         }
         return source;
     }
@@ -53,6 +54,7 @@ public sealed class ContentLocalizer(CmsDefaults defaults)
             new CookieOptions { HttpOnly = true, SameSite = SameSiteMode.Lax, Secure = context.Request.IsHttps, MaxAge = TimeSpan.FromDays(365), IsEssential = true });
         var row = await db.Settings.AsNoTracking().SingleOrDefaultAsync(x => x.Key == "cms", context.RequestAborted);
         Content = row is null ? defaults.Create() : SiteJson.Deserialize<CmsContent>(row.Value);
+        BrandIdentity.Apply(Content);
         // Seed additions remain available after an older CMS record has been saved.
         foreach (var pair in defaults.Content.Texts) Content.Texts.TryAdd(pair.Key, new Dictionary<string, string>(pair.Value));
     }

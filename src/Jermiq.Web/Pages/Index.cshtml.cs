@@ -43,13 +43,13 @@ public sealed class SitePageModel(CatalogService catalog, StoreCatalogService st
         PageName = string.IsNullOrEmpty(pageName) ? "home" : pageName.ToLowerInvariant();
         (Title, Description) = PageName switch
         {
-            "home" => (localizer["Ջերմիք — պահեստամասեր, ջրատաքացուցիչներ և սպասարկում"], localizer["Գտեք ձեր սարքի պահեստամասը՝ ըստ տեսակի, կոդի կամ մոդելի։ Ջրատաքացուցիչներ և մասնագիտական սպասարկում մեկ տեղում։"]),
+            "home" => (localizer["TERMOMASTER — էլեկտրական ջրատաքացուցիչների կենտրոն"], localizer["Գտեք ձեր սարքի պահեստամասը՝ ըստ տեսակի, կոդի կամ մոդելի։ Ջրատաքացուցիչներ և մասնագիտական սպասարկում մեկ տեղում։"]),
             "catalog" => (localizer["Ամբողջ տեսականին"], localizer["Ջրատաքացուցիչներ և սարքավորումների պահեստամասեր։ Ընտրեք կատեգորիան կամ որոնեք մասի կոդով։"]),
             "parts" => (localizer["Պահեստամասեր"], localizer["ՏԷՆ-եր, անոդներ, թերմոստատներ և այլ պահեստամասեր՝ ձեր սարքի համար։"]),
             "selection" => (localizer["Ընտրել սարքի մոդելով"], localizer["Ընտրեք սարքի տեսակը, բրենդը և մոդելը՝ համապատասխան պահեստամասերը տեսնելու համար։"]),
             "delivery" => (localizer["Առաքում և ինքնավերցում"], localizer["Պատվերի ստացման եղանակներն ու առաքման պայմանները։"]),
             "payment" => (localizer["Վճարման պայմաններ"], localizer["Պատվերի գնի հաստատումն ու վճարման եղանակները։"]),
-            "about" => (localizer["Ջերմիքի մասին"], localizer["Պահեստամասերի ընտրությունից մինչև սարքի սպասարկում։"]),
+            "about" => (localizer["TERMOMASTER-ի մասին"], localizer["Պահեստամասերի ընտրությունից մինչև սարքի սպասարկում։"]),
             "returns" => (localizer["Վերադարձ և փոխանակում"], localizer["Վերադարձի, փոխանակման և թերության դեպքում դիմելու կարգը՝ պարզ քայլերով։"]),
             "terms" => (localizer["Գնման պայմաններ"], localizer["Ապրանքի ընտրությունից մինչև պատվերի հաստատում․ գներ, առկայություն և կողմերի համաձայնեցումներ։"]),
             "ordering" => (localizer["Ինչպես պատվիրել"], localizer["Գտեք ճիշտ ապրանքը, ուղարկեք հայտը և հաստատեք ստացման պայմանները։"]),
@@ -99,7 +99,7 @@ public sealed class SitePageModel(CatalogService catalog, StoreCatalogService st
         Results = allResults.Skip((PageNumber - 1) * 12).Take(12).ToList();
         var canonicalPath = PageName == "home" ? "/" : "/" + PageName;
         if (CategoryId.Length > 0 && PageName is "catalog" or "parts") canonicalPath = "/catalog?category=" + Uri.EscapeDataString(CategoryId);
-        ViewData["Title"] = PageName == "home" ? Title : Title + localizer[" | Ջերմիք"];
+        ViewData["Title"] = PageName == "home" ? Title : Title + localizer[" | TERMOMASTER"];
         ViewData["Description"] = Description;
         ViewData["Canonical"] = canonicalPath;
         ViewData["NoIndex"] = Query.Length > 0 || Brand.Length > 0 || ModelId.Length > 0 || SelectedSpecs.Count > 0 || MinPrice is not null || MaxPrice is not null || PageNumber > 1 || Sort != "popular" || PageName is "favorites" or "compare" or "cart";
