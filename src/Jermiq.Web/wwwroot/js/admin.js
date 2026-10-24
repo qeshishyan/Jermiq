@@ -3,6 +3,8 @@
   'use strict';
   const { $, $$, escape, icons, api, openDialog, closeDialog, t } = window.Jermiq;
   const root = $('#admin-app'); if (!root) return;
+  const desk = window.JermiqLeadDesk;
+  let leadView = 'all';
   const isAdmin = root.dataset.isAdmin === 'true';
   const labels = { service: t(t("Սպասարկում")), question: t('Question'), part: t(t("Պահեստամաս")), order: t('Order'), callback: t('Callback') };
   const statuses = { new: t(t("Նոր")), contacted: t(t("Կապ հաստատված")), in_progress: t('In progress'), waiting: t('Waiting'), completed: t(t("Ավարտված")), cancelled: t('Cancelled') };
@@ -13,17 +15,17 @@
   let storeCatalog = { categories: [], equipmentModels: [] };
   let loadCms, loadUsers;
   let cms = null, translationPage = 1, translationPages = 1, translationDraft = {}, currentContent = null, users = [], currentUser = null;
-  const date = value => new Date(value).toLocaleString(document.documentElement.lang, { timeZone: 'Asia/Yerevan' });
+  const date = value => desk?.date(value) || new Date(value).toLocaleString(document.documentElement.lang, { timeZone: 'Asia/Yerevan', hour12:false });
   function error(message) { $('#admin-error').textContent = message; $('#admin-error').hidden = !message; }
   function notice(message) { $('#admin-notice').textContent = message; $('#admin-notice').hidden = !message; }
   function syncDrafts() { $$('[data-dirty-for]').forEach(el => { el.textContent = t(dirty.has(el.dataset.dirtyFor) ? 'Unsaved changes' : 'Saved version'); el.classList.toggle('has-changes', dirty.has(el.dataset.dirtyFor)); }); }
   function setBusy(value) {
     busy = value; root.setAttribute('aria-busy', String(value));
     $$('#lead-form,#product-form,#settings-form,#content-form,#user-form,#lead-search-form,.advanced-filters', root).forEach(form => { form.inert = value; });
-    $$('button,input[type=file],input[data-select-lead],#lead-select-page,#lead-bulk-status,#product-search,#product-category-filter,#product-state-filter,#product-sort', root).forEach(el => { el.disabled = value; });
+    $$('button,input[type=file],input[data-select-lead],#lead-select-page,#lead-bulk-status,#lead-bulk-priority,#lead-bulk-assignee,#product-search,#product-category-filter,#product-state-filter,#product-sort', root).forEach(el => { el.disabled = value; });
     if (!value && officeData) { $('#lead-prev').disabled = leadPage <= 1; $('#lead-next').disabled = leadPage * officeData.pageSize >= officeData.total; }
     if (!value && isAdmin) { $('#product-prev').disabled = productPage <= 1; $('#product-next').disabled = productPage >= productPages; }
-    syncDrafts();
+    syncDrafts(); if (!value) { syncLeadControls(); desk?.sync(); }
     if (!value && isAdmin && cms) { $('#translation-prev').disabled = translationPage <= 1; $('#translation-next').disabled = translationPage >= translationPages; }
   }
   async function run(fn) {
@@ -81,10 +83,33 @@
   }
   function resetLeadFilters() {
     $('#lead-search').value = '';
-    ['lead-filter','lead-kind-filter','lead-priority-filter','lead-assignee-filter','lead-source-filter','lead-due-filter'].forEach(id => { $('#' + id).value = 'all'; });
-    $('#lead-sort').value = 'newest'; leadPage = 1;
+    ['lead-filter','lead-kind-filter','lead-priority-filter','lead-assignee-filter','lead-source-filter','lead-due-filter','lead-photo-filter'].forEach(id => { $('#' + id).value = 'all'; });
+    $('#lead-sort').value = 'newest'; $('#lead-date-from').value = ''; $('#lead-date-to').value = ''; leadView = 'all'; selectedLeads.clear(); leadPage = 1;
   }
-  function leadQuery() { return new URLSearchParams({ q: $('#lead-search').value, status: $('#lead-filter').value, kind: $('#lead-kind-filter').value, priority: $('#lead-priority-filter').value, assignee: $('#lead-assignee-filter').value, source: $('#lead-source-filter').value, due: $('#lead-due-filter').value, sort: $('#lead-sort').value, page: leadPage }); }
+  function leadQuery() { return new URLSearchParams({ q: $('#lead-search').value.trim(), status: $('#lead-filter').value, kind: $('#lead-kind-filter').value, priority: $('#lead-priority-filter').value, assignee: $('#lead-assignee-filter').value, source: $('#lead-source-filter').value, due: $('#lead-due-filter').value, photos: $('#lead-photo-filter').value, dateFrom: $('#lead-date-from').value, dateTo: $('#lead-date-to').value, view: leadView, sort: $('#lead-sort').value, page: leadPage }); }
+  function syncLeadControls() {
+    const apply = $('#lead-bulk-apply');
+    if (apply) apply.disabled = busy || selectedLeads.size === 0 || !($('#lead-bulk-status').value || $('#lead-bulk-priority').value || $('#lead-bulk-assignee').value !== '__keep');
+  }
+  function renderLeadFilters() {
+    $$('[data-lead-view]', root).forEach(button => button.setAttribute('aria-pressed', String(button.dataset.leadView === leadView)));
+    const chips = [];
+    const currentView = $('[data-lead-view="' + leadView + '"]', root);
+    if (leadView !== 'all' && currentView) chips.push(currentView.textContent.trim());
+    if ($('#lead-search').value.trim()) chips.push(t('Որոնում') + ': ' + $('#lead-search').value.trim());
+    for (const id of ['lead-filter','lead-kind-filter','lead-priority-filter','lead-assignee-filter','lead-source-filter','lead-due-filter','lead-photo-filter']) {
+      const select = $('#' + id); if (select.value && select.value !== 'all') chips.push(select.options[select.selectedIndex]?.textContent || select.value);
+    }
+    if ($('#lead-date-from').value) chips.push(t('Սկսած') + ' ' + $('#lead-date-from').value);
+    if ($('#lead-date-to').value) chips.push(t('Մինչև') + ' ' + $('#lead-date-to').value);
+    const target = $('#lead-filter-summary'); target.hidden = !chips.length;
+    target.innerHTML = chips.map(text => `<span class="lead-filter-chip">${escape(text)}</span>`).join('');
+  }
+  function renderLeadTimeline(office) {
+    const value = (key, text) => String(text).split(' → ').map(part => key === 'Status' ? statuses[part] || part : key === 'Priority' ? priorities[part] || part : key === 'Assignee' ? (part ? officeData?.staff.find(user => user.id === part)?.name || t('Inactive employee') : t('Unassigned')) : key === 'Due date' && part ? date(part) : part).join(' → ');
+    $('#lead-notes').innerHTML = (office.notes || []).slice().reverse().map(n => `<article>${escape(n.text)}<small>${escape(n.actor)} · ${escape(date(n.at))}</small></article>`).join('') || `<p class="text-sm">${escape(t('No notes yet'))}</p>`;
+    $('#lead-history').innerHTML = (office.history || []).slice().reverse().map(n => `<article>${escape(t(n.action))}${Object.entries(n.changes || {}).map(([key, text]) => `<p>${escape(t(key))}: ${escape(value(key, text))}</p>`).join('')}<small>${escape(n.actor)} · ${escape(date(n.at))}</small></article>`).join('') || `<p class="text-sm">${escape(t('Website request'))}</p>`;
+  }
   async function loadDashboard() {
     dashboard = await api('/api/admin/dashboard', { cache: 'no-store' });
     const metrics = [[t('Today'), dashboard.today, 'message'], [t('Active requests'), dashboard.active, 'wrench'], [t('Urgent'), dashboard.urgent, 'shield'], [t('Overdue'), dashboard.overdue, 'refresh']];
@@ -95,7 +120,7 @@
       const c = dashboard.catalog;
       $('#dashboard-catalog').innerHTML = [[t('All products'),c.total,'all'],[t('Missing price'),c.withoutPrice,'no-price'],[t('Demonstration examples'),c.demo,'demo'],[t('Missing description'),c.withoutDescription,'no-description']].map(([label,count,filter]) => `<button class="catalog-health-item" type="button" data-catalog-filter="${filter}"><strong>${count}</strong><span>${escape(label)}</span><span>→</span></button>`).join('');
     }
-    $('#last-synced').textContent = `${t('Updated')} ${new Date().toLocaleTimeString(document.documentElement.lang, { hour:'2-digit',minute:'2-digit',timeZone:'Asia/Yerevan' })}`;
+    $('#last-synced').textContent = `${t('Updated')} ${new Date().toLocaleTimeString(document.documentElement.lang, { hour:'2-digit',minute:'2-digit',timeZone:'Asia/Yerevan',hour12:false })}`;
     icons($('#panel-dashboard'));
   }
   function renderSelection() {
@@ -104,28 +129,34 @@
     const entries = officeData?.leads || [];
     $('#lead-select-page').checked = entries.length > 0 && entries.every(x => selectedLeads.has(x.lead.id));
     $('#lead-select-page').indeterminate = entries.some(x => selectedLeads.has(x.lead.id)) && !$('#lead-select-page').checked;
+    syncLeadControls();
   }
   async function loadOffice() {
+    if ($('#lead-date-from').value && $('#lead-date-to').value && $('#lead-date-from').value > $('#lead-date-to').value) throw new Error(t('Սկզբի ամսաթիվը չի կարող լինել ավարտից հետո։'));
     officeData = await api('/api/admin/leads?' + leadQuery(), { cache: 'no-store' }); leadPage = officeData.page;
     const kindSelect = $('#lead-kind-filter'), previous = kindSelect.value;
     kindSelect.innerHTML = `<option value="all">${escape(t('All types'))}</option>` + [...new Set([...Object.keys(labels), ...officeData.kinds])].map(k => `<option value="${escape(k)}">${escape(labels[k] || k)}</option>`).join('');
     kindSelect.value = [...kindSelect.options].some(o => o.value === previous) ? previous : 'all';
     const assigneeFilter = $('#lead-assignee-filter'), assigned = assigneeFilter.value;
     assigneeFilter.innerHTML = `<option value="all">${escape(t('All employees'))}</option><option value="__unassigned">${escape(t('Unassigned'))}</option>` + officeData.staff.map(u => `<option value="${escape(u.id)}">${escape(u.name)}</option>`).join(''); assigneeFilter.value = assigned;
+    const bulkAssignee = $('#lead-bulk-assignee'), bulkAssigned = bulkAssignee.value;
+    bulkAssignee.innerHTML = `<option value="__keep">${escape(t('Պատասխանատուին չփոխել'))}</option><option value="">${escape(t('Unassigned'))}</option>` + officeData.staff.map(user => `<option value="${escape(user.id)}">${escape(user.name)}</option>`).join('');
+    bulkAssignee.value = [...bulkAssignee.options].some(option => option.value === bulkAssigned) ? bulkAssigned : '__keep';
+    desk?.setEntries(officeData.leads, currentLead);
     const totals = Object.fromEntries(officeData.stats.map(x => [x.status, x.count]));
     const all = Object.values(totals).reduce((a, b) => a + b, 0);
     $('#lead-total').textContent = all;
     $('#office-stats').innerHTML = [[t('All requests'), all, 'all'], [t(t("Նոր")), totals.new || 0, 'new'], [t('In progress'), (totals.in_progress || 0), 'in_progress'], [t(t("Ավարտված")), totals.completed || 0, 'completed']].map(([title, count, filter]) => `<button class="office-stat" type="button" data-stat="${filter}"><small>${escape(title)}</small><strong>${count}</strong></button>`).join('');
     $('#leads-list').innerHTML = officeData.leads.length ? officeData.leads.map(({ lead: l, office: o }) => {
       const overdue = o.dueAt && new Date(o.dueAt) < new Date() && !['completed', 'cancelled'].includes(l.status);
-      const assignee = officeData.staff.find(u => u.id === o.assignee)?.name;
-      return `<article class="office-request ${currentLead?.lead.id === l.id ? 'active' : ''}"><div class="office-request-head"><label class="request-check"><input type="checkbox" data-select-lead="${escape(l.id)}" ${selectedLeads.has(l.id) ? 'checked' : ''} aria-label="${escape(t('Select request') + ' ' + l.name)}" /></label><div><div class="eyebrow">${escape(labels[l.kind] || l.kind)} · ${escape(date(l.created_at))}</div><h3>${escape(l.name)}</h3></div><span class="office-badge ${escape(l.status)}">${escape(statuses[l.status] || l.status)}</span></div><div class="actions text-sm mt-3">${l.phone ? `<a class="text-link" href="tel:${escape(l.phone.replace(/[^+\d]/g, ''))}">${escape(l.phone)}</a>` : ''}${l.email ? `<a class="text-link" href="mailto:${escape(l.email)}">${escape(l.email)}</a>` : ''}</div>${o.subject ? `<p class="mt-3">${escape(o.subject)}</p>` : ''}<div class="office-request-foot"><span class="office-badge ${escape(o.priority)}">${escape(priorities[o.priority])}</span>${assignee ? `<span>${escape(assignee)}</span>` : ''}${o.dueAt ? `<span class="${overdue ? 'office-overdue' : ''}">${escape(date(o.dueAt))}</span>` : ''}<button type="button" class="text-link plain-button" data-edit-lead="${escape(l.id)}">${escape(t('Open request'))} →</button></div></article>`;
-    }).join('') : `<div class="empty-state"><h3>${escape(t('No requests match your filters'))}</h3></div>`;
+      const assignee = officeData.staff.find(user => user.id === o.assignee)?.name || t(o.assignee ? 'Inactive employee' : 'Unassigned');
+      return `<article class="office-request lead-request-card ${currentLead?.lead.id === l.id ? 'active' : ''}" data-lead-id="${escape(l.id)}"><div class="office-request-head"><label class="request-check"><input type="checkbox" data-select-lead="${escape(l.id)}" ${selectedLeads.has(l.id) ? 'checked' : ''} aria-label="${escape(t('Select request') + ' ' + l.name)}" /></label><div><div class="eyebrow">${escape(labels[l.kind] || l.kind)} · ${escape(date(l.created_at))}</div><h3>${escape(l.name)}</h3></div><span class="office-badge ${escape(l.status)}">${escape(statuses[l.status] || l.status)}</span></div><div class="lead-card-contact">${l.phone ? `<a href="tel:${escape(l.phone.replace(/[^+\d]/g, ''))}">${escape(l.phone)}</a>` : ''}${l.email ? `<a href="mailto:${escape(l.email)}">${escape(l.email)}</a>` : ''}<span class="lead-card-reference" title="${escape(l.id)}">#${escape(l.id.slice(0,8).toUpperCase())}</span></div>${o.subject ? `<p class="lead-card-subject">${escape(o.subject)}</p>` : ''}${l.message ? `<p class="lead-card-message">${escape(l.message)}</p>` : ''}${o.brand || o.model ? `<div class="lead-card-device">${[o.brand,o.model].filter(Boolean).map(text => `<span>${escape(text)}</span>`).join('')}</div>` : ''}${desk?.cardPhotos({ lead:l, office:o }) || ''}<div class="office-request-foot"><span class="office-badge ${escape(o.priority)}">${escape(priorities[o.priority] || o.priority)}</span><span class="lead-assignee"><i data-icon="users"></i>${escape(assignee)}</span>${o.dueAt ? `<span class="lead-card-date ${overdue ? 'office-overdue' : ''}"><i data-icon="clock"></i>${escape(date(o.dueAt))}</span>` : ''}<button type="button" class="text-link plain-button" data-edit-lead="${escape(l.id)}" aria-controls="lead-editor" aria-expanded="${currentLead?.lead.id === l.id}">${escape(t('Open request'))} →</button></div></article>`;
+    }).join('') : `<div class="empty-state"><h3>${escape(t('No requests match your filters'))}</h3><p>${escape(t('Փոխեք որոնումը կամ ֆիլտրերը, կամ ստեղծեք նոր հայտ։'))}</p><button type="button" class="btn btn-outline" data-quick="new-lead">${escape(t('New request'))}</button></div>`;
     $('#lead-page').textContent = `${t('Page')} ${leadPage} / ${Math.max(1, Math.ceil(officeData.total / officeData.pageSize))} · ${officeData.total} ${t('Requests')}`;
     const exportQuery = leadQuery(); exportQuery.delete('page'); $('#lead-export').href = '/api/admin/export?' + exportQuery;
     $('#lead-prev').disabled = leadPage <= 1; $('#lead-next').disabled = leadPage * officeData.pageSize >= officeData.total;
     $('#lead-results-count').textContent = `${officeData.total} ${t('Matching requests')}`;
-    renderSelection(); icons($('#leads-list')); await loadDashboard();
+    renderSelection(); renderLeadFilters(); icons($('#leads-list')); await loadDashboard();
   }
   function fillLead(entry) {
     currentLead = structuredClone(entry); dirty.delete('lead-form');
@@ -136,21 +167,28 @@
     f.elements.status.innerHTML = Object.entries(statuses).map(([v, title]) => `<option value="${v}">${escape(title)}</option>`).join('');
     f.elements.assignee.innerHTML = `<option value="">${escape(t('Unassigned'))}</option>` + officeData.staff.map(u => `<option value="${escape(u.id)}">${escape(u.name)}</option>`).join('');
     for (const name of ['kind', 'name', 'phone', 'email', 'message', 'subject', 'brand', 'model', 'selection', 'address', 'source', 'priority', 'status', 'assignee', 'note']) f.elements[name].value = values[name] || '';
+    f.elements.kind.value = labels[values.kind] || values.kind || '';
     if (o.assignee && !officeData.staff.some(u => u.id === o.assignee)) {
       f.elements.assignee.add(new Option(t('Inactive employee'), o.assignee)); f.elements.assignee.value = o.assignee;
     }
     const due = o.dueAt ? new Date(o.dueAt) : null;
-    f.elements.dueAt.value = due ? new Date(due.getTime() - due.getTimezoneOffset() * 60000).toISOString().slice(0, 16) : '';
+    const parts = due ? Object.fromEntries(new Intl.DateTimeFormat('en-CA', { timeZone:'Asia/Yerevan',year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',hourCycle:'h23' }).formatToParts(due).map(part => [part.type,part.value])) : null;
+    f.elements.dueAt.value = parts ? `${parts.year}-${parts.month}-${parts.day}T${parts.hour}:${parts.minute}` : '';
     $('#lead-editor').hidden = false;
-    if (innerWidth <= 1100) $('#lead-editor').scrollIntoView?.({ behavior: 'smooth', block: 'start' });
+    $('#lead-workspace').classList.add('has-editor');
+    if (innerWidth <= 1180) $('#lead-editor').scrollIntoView?.({ behavior: window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'start' });
     $('#lead-editor-title').textContent = l.created_at ? t('Edit request') : t('New request');
     $('#lead-reference').textContent = l.created_at ? l.id : '';
     $('#lead-attachment-area').hidden = !l.created_at;
-    $('#lead-attachment').value = '';
-    $('#lead-label-link').hidden = !JSON.parse(l.details || '{}').labelAttachment; $('#lead-label-link').href = '/api/attachments?id=' + l.id + '&photo=2';
+    $('#lead-photo-save-hint').hidden = !!l.created_at;
+    $('#lead-attachment').value = ''; $('#lead-label-attachment').value = '';
+    let details = {}; try { details = JSON.parse(l.details || '{}') || {}; } catch { }
+    $('#lead-label-link').hidden = !details.labelAttachment; $('#lead-label-link').href = '/api/attachments?id=' + l.id + '&photo=2';
     $('#lead-attachment-link').hidden = !l.attachment; $('#lead-attachment-link').href = '/api/attachments?id=' + l.id;
-    $('#lead-notes').innerHTML = (o.notes || []).slice().reverse().map(n => `<article>${escape(n.text)}<small>${escape(n.actor)} · ${escape(date(n.at))}</small></article>`).join('') || `<p class="text-sm">${escape(t('No notes yet'))}</p>`;
-    $('#lead-history').innerHTML = (o.history || []).slice().reverse().map(n => `<article>${escape(t(n.action))}${Object.entries(n.changes || {}).map(([key, value]) => `<p>${escape(t(key))}: ${escape(value)}</p>`).join('')}<small>${escape(n.actor)} · ${escape(date(n.at))}</small></article>`).join('') || `<p class="text-sm">${escape(t('Website request'))}</p>`;
+    renderLeadTimeline(o); desk?.summary(entry); desk?.gallery(entry);
+    $$('[data-lead-id]', root).forEach(card => card.classList.toggle('active', card.dataset.leadId === l.id));
+    $$('[data-edit-lead]', root).forEach(button => button.setAttribute('aria-expanded', String(button.dataset.editLead === l.id)));
+
   }
   function newLead() {
     selectTab(tabs.find(tab => tab.dataset.tab === 'leads'));
@@ -160,11 +198,12 @@
   }
   $('#lead-filter').innerHTML += Object.entries(statuses).map(([value, title]) => `<option value="${value}">${escape(title)}</option>`).join('');
   $('#lead-new').addEventListener('click', newLead);
-  $('#lead-close').addEventListener('click', () => { if (!discard('lead-form')) return; currentLead = null; $('#lead-editor').hidden = true; });
-  $('#lead-search-form').addEventListener('submit', e => { e.preventDefault(); leadPage = 1; void run(loadOffice); });
-  ['lead-filter', 'lead-kind-filter', 'lead-priority-filter', 'lead-assignee-filter', 'lead-source-filter', 'lead-due-filter', 'lead-sort'].forEach(id => $('#' + id).addEventListener('change', () => { leadPage = 1; void run(loadOffice); }));
+  $('#lead-close').addEventListener('click', () => { if (!discard('lead-form')) return; const id = currentLead?.lead.id; currentLead = null; $('#lead-editor').hidden = true; $('#lead-workspace').classList.remove('has-editor'); $$('[data-lead-id]', root).forEach(card => card.classList.remove('active')); $$('[data-edit-lead]', root).forEach(button => button.setAttribute('aria-expanded','false')); const button = $$('[data-edit-lead]', root).find(button => button.dataset.editLead === id); if (button) { button.focus(); button.scrollIntoView?.({block:'nearest'}); } });
+  $('#lead-search-form').addEventListener('submit', e => { e.preventDefault(); selectedLeads.clear(); leadPage = 1; void run(loadOffice); });
+  ['lead-filter', 'lead-kind-filter', 'lead-priority-filter', 'lead-assignee-filter', 'lead-source-filter', 'lead-due-filter', 'lead-sort', 'lead-photo-filter', 'lead-date-from', 'lead-date-to'].forEach(id => $('#' + id).addEventListener('change', () => { selectedLeads.clear(); leadPage = 1; void run(loadOffice); }));
   $('#lead-filters-reset').addEventListener('click', () => { resetLeadFilters(); void run(loadOffice); });
-  $('#lead-bulk-status').innerHTML = Object.entries(statuses).map(([value,label]) => `<option value="${value}">${escape(label)}</option>`).join('');
+  $('#lead-bulk-status').innerHTML = `<option value="">${escape(t('Կարգավիճակը չփոխել'))}</option>` + Object.entries(statuses).map(([value,label]) => `<option value="${value}">${escape(label)}</option>`).join('');
+  ['lead-bulk-status','lead-bulk-priority','lead-bulk-assignee'].forEach(id => $('#' + id).addEventListener('change',syncLeadControls));
   $('#lead-select-page').addEventListener('change', e => {
     for (const entry of officeData.leads) if (e.target.checked) selectedLeads.set(entry.lead.id, entry.office.revision); else selectedLeads.delete(entry.lead.id);
     $$('[data-select-lead]').forEach(el => { el.checked = selectedLeads.has(el.dataset.selectLead); }); renderSelection();
@@ -177,9 +216,13 @@
   });
   $('#lead-bulk-apply').addEventListener('click', () => {
     if (dirty.has('lead-form') || selectedLeads.size > 100) { error(t(selectedLeads.size > 100 ? 'Select no more than 100 requests.' : 'Save or close the request editor before a bulk update.')); return; }
-    if (!confirm(`${t('Apply this status to selected requests?')} (${selectedLeads.size})`)) return;
+    const status = $('#lead-bulk-status').value, priority = $('#lead-bulk-priority').value, assignee = $('#lead-bulk-assignee').value;
+    if (!selectedLeads.size || !(status || priority || assignee !== '__keep')) return;
+    if (!confirm(`${t('Կիրառե՞լ նշված փոփոխությունները ընտրված հայտերին։')} (${selectedLeads.size})`)) return;
     void run(async () => {
-      await post('/api/admin/leads/bulk-status', { revisions:Object.fromEntries(selectedLeads), status:$('#lead-bulk-status').value });
+      const body = { revisions:Object.fromEntries(selectedLeads) }; if (status) body.status = status; if (priority) body.priority = priority; if (assignee !== '__keep') body.assignee = assignee;
+      await post(priority || assignee !== '__keep' ? '/api/admin/leads/bulk-workflow' : '/api/admin/leads/bulk-status', body);
+      $('#lead-bulk-status').value = ''; $('#lead-bulk-priority').value = ''; $('#lead-bulk-assignee').value = '__keep';
       selectedLeads.clear(); await loadOffice(); if (currentLead?.lead.created_at) fillLead(await api('/api/admin/lead/' + currentLead.lead.id)); notice(t('Selected requests updated'));
     });
   });
@@ -187,27 +230,41 @@
   $('#lead-next').addEventListener('click', () => { leadPage++; void run(loadOffice); });
   root.addEventListener('click', e => {
     const edit = e.target.closest('[data-edit-lead]');
-    if (edit && discard('lead-form')) { fillLead(officeData.leads.find(x => x.lead.id === edit.dataset.editLead)); }
+    if (edit && discard('lead-form')) void run(async () => fillLead(await api('/api/admin/lead/' + edit.dataset.editLead, {cache:'no-store'})));
+    const view = e.target.closest('[data-lead-view]');
+    if (view) { leadView = view.dataset.leadView; selectedLeads.clear(); leadPage = 1; void run(loadOffice); }
     const stat = e.target.closest('[data-stat]');
-    if (stat) { $('#lead-filter').value = stat.dataset.stat; leadPage = 1; void run(loadOffice); }
+    if (stat) { leadView = 'all'; selectedLeads.clear(); $('#lead-filter').value = stat.dataset.stat; leadPage = 1; void run(loadOffice); }
   });
   $('#lead-form').addEventListener('submit', e => {
-    e.preventDefault(); if (!currentLead) return;
+    e.preventDefault(); if (!currentLead || !e.target.reportValidity()) return;
     void run(async () => {
       const data = Object.fromEntries(new FormData(e.target));
+      const kindText = data.kind.trim(), previousKind = currentLead.lead.kind;
+      data.kind = kindText === (labels[previousKind] || previousKind) ? previousKind : Object.entries(labels).find(([, label]) => label === kindText)?.[0] || kindText;
       data.id = currentLead.lead.id; data.revision = currentLead.office.revision;
-      data.dueAt = data.dueAt ? new Date(data.dueAt).toISOString() : null;
+      data.dueAt = data.dueAt ? new Date(data.dueAt + '+04:00').toISOString() : null;
       await post('/api/admin/lead', data); dirty.delete('lead-form');
       await loadOffice();
-      fillLead(await api('/api/admin/lead/' + data.id)); notice(t('Saved'));
+      const saved = await api('/api/admin/lead/' + data.id); if (selectedLeads.has(data.id)) selectedLeads.set(data.id,saved.office.revision);
+      fillLead(saved); notice(t('Saved'));
     });
   });
-  $('#lead-attachment').addEventListener('change', e => {
-    const file = e.target.files?.[0]; if (!file || !currentLead?.lead.created_at) return;
+  for (const [id, number] of [['lead-attachment',1],['lead-label-attachment',2]]) $('#' + id).addEventListener('change', event => {
+    const input = event.target, file = input.files?.[0]; if (!file || !currentLead?.lead.created_at) return;
+    if (!['image/jpeg','image/png','image/webp'].includes(file.type) || !file.size || file.size > 5 * 1024 * 1024) { input.value = ''; error(t('Կցեք JPEG, PNG կամ WebP լուսանկար՝ մինչև 5 ՄԲ։')); return; }
     void run(async () => {
-      const data = new FormData(); data.set('id', currentLead.lead.id); data.set('revision', currentLead.office.revision); data.set('attachment', file);
-      const result = await api('/api/admin/lead-attachment', { method: 'POST', body: data }); currentLead.office.revision = result.revision;
-      currentLead.lead.attachment = true; $('#lead-attachment-link').hidden = false; notice(t('Attachment saved'));
+      try {
+        const data = new FormData(); data.set('id',currentLead.lead.id); data.set('revision',currentLead.office.revision); data.set('attachment',file); data.set('photo',String(number));
+        await api('/api/admin/lead-attachment', {method:'POST',body:data});
+        const saved = await api('/api/admin/lead/' + currentLead.lead.id, {cache:'no-store'}); currentLead = saved;
+        if (selectedLeads.has(saved.lead.id)) selectedLeads.set(saved.lead.id,saved.office.revision);
+        desk?.gallery(saved); renderLeadTimeline(saved.office);
+        $('#lead-attachment-link').hidden = !saved.lead.attachment;
+        let details = {}; try { details = JSON.parse(saved.lead.details || '{}') || {}; } catch { }
+        $('#lead-label-link').hidden = !details.labelAttachment;
+        await loadOffice(); notice(t(dirty.has('lead-form') ? 'Նկարը պահպանված է։ Հայտի չպահպանված դաշտերը պահպանեք առանձին։' : 'Attachment saved'));
+      } finally { input.value = ''; }
     });
   });
   const tabs = $$('[data-tab]', root);
@@ -229,7 +286,7 @@
   });
   $('#admin-refresh').addEventListener('click', () => {
     if ((dirty.size || Object.keys(translationDraft).length) && !confirm(t('Discard unsaved changes?'))) return;
-    dirty.clear(); selectedLeads.clear(); translationDraft = {}; cms = null; currentLead = null; $('#lead-editor').hidden = true;
+    dirty.clear(); selectedLeads.clear(); translationDraft = {}; cms = null; currentLead = null; $('#lead-editor').hidden = true; $('#lead-workspace').classList.remove('has-editor');
     void run(load);
   });
   document.addEventListener('click', e => { if (e.target.closest('[data-action="dialog-close"]')) closeDialog(); });

@@ -17,7 +17,14 @@ async function page(route, admin = false) {
   w.HTMLDialogElement.prototype.close = function () { this.open = false; this.dispatchEvent(new w.Event('close')); };
   w.fetch = async (url, options = {}) => {
     if (options.body instanceof w.FormData) {
-      const body = new FormData(); for (const [key, value] of options.body) if (typeof value === 'string') body.append(key, value);
+      const body = new FormData();
+      for (const [key, value] of options.body) {
+        if (typeof value === 'string') body.append(key, value);
+        else if (value.size) {
+          const bytes = await new Promise((resolve, reject) => { const reader = new w.FileReader(); reader.onload = () => resolve(reader.result); reader.onerror = reject; reader.readAsArrayBuffer(value); });
+          body.append(key, new Blob([bytes], {type:value.type}), value.name);
+        }
+      }
       options = { ...options, body };
     }
     // Browser requests carry the selected locale through its cookie. Supply it explicitly in jsdom.
@@ -27,7 +34,7 @@ async function page(route, admin = false) {
   w.eval(fs.readFileSync(path.join(root, 'src/Jermiq.Web/wwwroot/js/site.js'), 'utf8'));
   if (admin) {
     w.eval(fs.readFileSync(path.join(root, 'src/Jermiq.Web/wwwroot/js/arrivals.js'), 'utf8'));
-    w.eval(fs.readFileSync(path.join(root, 'src/Jermiq.Web/wwwroot/js/admin.js'), 'utf8'));
+    { w.eval(fs.readFileSync(path.join(root, 'src/Jermiq.Web/wwwroot/js/lead-desk.js'), 'utf8')); w.eval(fs.readFileSync(path.join(root, 'src/Jermiq.Web/wwwroot/js/admin.js'), 'utf8')); }
   }
   return dom;
 }
@@ -90,6 +97,7 @@ check('Muting suppresses the chime but keeps tab alerts', tones === beforeAlertT
 click('#arrival-open'); await wait(() => d.querySelector('#arrival-banner').hidden && !d.querySelector('#lead-new').disabled);
 
 click('#lead-new');
+check('Predefined request types are shown with localized names', d.querySelector('#lead-form').elements.kind.value === 'Service');
 const form = d.querySelector('#lead-form'); form.elements.kind.value = 'ui-custom'; form.elements.name.value = 'Office UI customer'; form.elements.phone.value = '+374 99 123456'; form.elements.note.value = 'UI note'; form.elements.priority.value = 'high';
 form.dispatchEvent(new w.Event('submit', { bubbles: true, cancelable: true }));
 await wait(() => d.querySelector('#lead-reference').textContent.length === 36 && !d.querySelector('#lead-new').disabled);
@@ -102,9 +110,62 @@ await wait(() => d.querySelectorAll('.office-request').length === 1 && !d.queryS
 check('Office UI searches real requests', d.querySelector('.office-request h3').textContent === 'Office UI customer');
 click('#lead-close');
 d.querySelector('#lead-select-page').checked = true; d.querySelector('#lead-select-page').dispatchEvent(new w.Event('change', {bubbles:true}));
-d.querySelector('#lead-bulk-status').value = 'waiting'; click('#lead-bulk-apply');
+d.querySelector('#lead-bulk-status').value = 'waiting'; d.querySelector('#lead-bulk-status').dispatchEvent(new w.Event('change',{bubbles:true})); click('#lead-bulk-apply');
 await wait(() => d.querySelector('#lead-bulk').hidden && !d.querySelector('#lead-new').disabled);
 check('Bulk status changes selected requests through the UI', d.querySelector('.office-request .office-badge.waiting'));
+click('[data-edit-lead]');
+await wait(() => !d.querySelector('#lead-editor').hidden && !d.querySelector('#lead-new').disabled);
+check('Opening a request uses the focused workspace and fresh record', d.querySelector('#lead-workspace').classList.contains('has-editor') && form.elements.name.value === 'Office UI customer');
+form.elements.message.value = 'Unsaved photo workflow message'; form.elements.message.dispatchEvent(new w.Event('input',{bubbles:true}));
+form.elements.note.value = 'Unsubmitted photo note'; form.elements.note.dispatchEvent(new w.Event('input',{bubbles:true}));
+const photoBytes = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jR5kAAAAASUVORK5CYII=', 'base64');
+async function attachPhoto(selector, count) {
+  const input = d.querySelector(selector);
+  Object.defineProperty(input, 'files', {configurable:true,value:[new w.File([photoBytes], 'desk-photo.png', {type:'image/png'})]});
+  input.dispatchEvent(new w.Event('change',{bubbles:true}));
+  await wait(() => !d.querySelector('#lead-new').disabled && d.querySelectorAll('#lead-photo-gallery [data-lead-photo]').length === count);
+}
+await attachPhoto('#lead-attachment', 1);
+await attachPhoto('#lead-label-attachment', 2);
+check('Both main and label photos render as private preview tiles', [...d.querySelectorAll('#lead-photo-gallery img')].every(image => image.getAttribute('src').startsWith('/api/attachments?') && image.getAttribute('src').includes('preview=true')));
+check('Photo upload preserves unsaved fields and does not submit an internal note', form.elements.message.value === 'Unsaved photo workflow message' && form.elements.note.value === 'Unsubmitted photo note' && !d.querySelector('#lead-notes').textContent.includes('Unsubmitted photo note') && d.querySelector('[data-dirty-for="lead-form"]').textContent === 'Unsaved changes');
+click('#lead-photo-gallery [data-photo-number="2"]');
+check('Photo opens inside the request with a clear caption and download', d.querySelector('#lead-photo-viewer').open && d.querySelector('#lead-photo-counter').textContent === '2 / 2' && d.querySelector('#lead-photo-caption').textContent.includes('Technical label') && d.querySelector('#lead-photo-download').getAttribute('href').includes('photo=2'));
+d.querySelector('#lead-photo-viewer').dispatchEvent(new w.KeyboardEvent('keydown',{key:'ArrowLeft',bubbles:true}));
+check('Keyboard moves between both request photos', d.querySelector('#lead-photo-counter').textContent === '1 / 2');
+const viewerImage = d.querySelector('#lead-lightbox-image');
+Object.defineProperty(viewerImage, 'naturalWidth', {configurable:true,value:1200}); Object.defineProperty(viewerImage, 'naturalHeight', {configurable:true,value:900});
+viewerImage.dispatchEvent(new w.Event('load')); click('#lead-photo-zoom-in');
+check('Zoom controls activate after the image loads', d.querySelector('#lead-photo-zoom-value').textContent === '150%' && !d.querySelector('#lead-photo-zoom-out').disabled);
+click('#lead-photo-fit'); click('#lead-photo-close');
+check('Closing the viewer returns to the unchanged draft', !d.querySelector('#lead-photo-viewer').open && !d.body.classList.contains('lead-viewer-open') && form.elements.message.value === 'Unsaved photo workflow message');
+form.elements.dueAt.value = '2027-01-02T09:30';
+form.elements.kind.value = w.Jermiq.t('Պահեստամաս');
+form.dispatchEvent(new w.Event('submit',{bubbles:true,cancelable:true}));
+await wait(() => !d.querySelector('#lead-new').disabled && d.querySelector('#lead-notes').textContent.includes('Unsubmitted photo note'));
+const deskId = d.querySelector('#lead-reference').textContent;
+const savedDesk = await (await raw('/api/admin/lead/'+deskId)).json();
+check('Saving the draft retains both images and uses Yerevan time', savedDesk.lead.attachment && JSON.parse(savedDesk.lead.details).labelAttachment && savedDesk.office.dueAt.startsWith('2027-01-02T05:30:00'));
+check('Localized request type is saved using its stable server code', savedDesk.lead.kind === 'part');
+click('#lead-close');
+check('Closing the editor restores the full request browser', !d.querySelector('#lead-workspace').classList.contains('has-editor'));
+d.querySelector('#lead-select-page').checked = true; d.querySelector('#lead-select-page').dispatchEvent(new w.Event('change',{bubbles:true}));
+const deskState = await (await raw('/api/admin/leads')).json();
+d.querySelector('#lead-bulk-priority').value = 'urgent'; d.querySelector('#lead-bulk-assignee').value = deskState.viewerId;
+d.querySelector('#lead-bulk-priority').dispatchEvent(new w.Event('change',{bubbles:true})); click('#lead-bulk-apply');
+await wait(() => !d.querySelector('#lead-new').disabled && d.querySelector('#lead-bulk').hidden);
+const assignedDesk = await (await raw('/api/admin/lead/'+deskId)).json();
+check('Bulk priority and assignment keep the status when it was not selected', assignedDesk.office.priority === 'urgent' && assignedDesk.office.assignee === deskState.viewerId && assignedDesk.lead.status === 'waiting');
+click('[data-lead-view="mine"]'); await wait(() => !d.querySelector('#lead-new').disabled);
+check('Personal queue combines with search and marks the active view', d.querySelectorAll('.office-request').length === 1 && d.querySelector('[data-lead-view="mine"]').getAttribute('aria-pressed') === 'true');
+click('[data-lead-view="new"]'); await wait(() => !d.querySelector('#lead-new').disabled);
+check('New queue excludes a waiting request without dropping the search', d.querySelectorAll('.office-request').length === 0 && d.querySelector('#lead-search').value === 'Office UI customer');
+click('[data-lead-view="all"]'); await wait(() => !d.querySelector('#lead-new').disabled);
+d.querySelector('#lead-photo-filter').value = 'without'; d.querySelector('#lead-photo-filter').dispatchEvent(new w.Event('change',{bubbles:true}));
+await wait(() => !d.querySelector('#lead-new').disabled);
+check('Photo filtering reflects real uploads', d.querySelectorAll('.office-request').length === 0);
+click('#lead-filters-reset'); await wait(() => !d.querySelector('#lead-new').disabled);
+check('Reset clears queues, date and photo filters together', d.querySelector('#lead-photo-filter').value === 'all' && d.querySelector('#lead-date-from').value === '' && d.querySelector('[data-lead-view="all"]').getAttribute('aria-pressed') === 'true');
 click('[data-tab="products"]');
 d.querySelector('#product-search').value = 'PRO1 R 80 V'; d.querySelector('#product-search').dispatchEvent(new w.Event('input'));
 check('Product search finds model codes', d.querySelectorAll('[data-edit-product]').length === 1);
@@ -128,6 +189,8 @@ check('CMS has editable fields in all languages', d.querySelectorAll('.translati
 const homepageConfig = await (await raw('/api/admin/store-catalog')).json();
 const search = d.querySelector('#translation-search'); search.value = homepageConfig.home.eyebrow; search.dispatchEvent(new w.Event('input'));
 const translation = d.querySelector('.translation-row textarea[lang="en"]'); translation.value = 'Office UI translated hero'; translation.dispatchEvent(new w.Event('input', { bubbles: true }));
+// An arrival refresh can briefly disable actions while the lookup request above runs.
+await wait(() => !d.querySelector('#translations-save').disabled);
 click('#translations-save'); await wait(() => !d.querySelector('#translations-save').disabled && d.querySelector('#admin-notice').textContent.includes('Translations saved'));
 check('CMS translation saves through the UI', (await (await raw('/?lang=en')).text()).includes('Office UI translated hero'));
 click('[data-tab="content"]'); click('#content-new');

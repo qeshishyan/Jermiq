@@ -52,9 +52,9 @@ public static class ApiEndpoints
             ctx.Response.Headers.CacheControl = "public, max-age=86400";
             return Results.File(path, FileStorage.ContentType(path));
         });
-        app.MapGet("/api/attachments", async (string? id, int? photo, AppDbContext db, FileStorage storage, HttpContext ctx, CancellationToken ct) =>
+        app.MapGet("/api/attachments", async (string? id, int? photo, bool? preview, AppDbContext db, FileStorage storage, HttpContext ctx, CancellationToken ct) =>
         {
-            if (!Guid.TryParseExact(id, "D", out var guid)) return Error("Ֆայլը չի գտնվել։", 404);
+            if (!Guid.TryParseExact(id, "D", out var guid) || photo is not (null or 1 or 2)) return Error("Ֆայլը չի գտնվել։", 404);
             var lead = await db.Leads.AsNoTracking().SingleOrDefaultAsync(x => x.Id == guid.ToString(), ct);
             if (lead is null) return Error("Ֆայլը չի գտնվել։", 404);
             var attachment = photo == 2 ? LeadPhotos.Label(lead) : lead.Attachment;
@@ -62,6 +62,11 @@ public static class ApiEndpoints
             var path = storage.Resolve(attachment);
             if (!File.Exists(path)) return Error("Ֆայլը չի գտնվել։", 404);
             ctx.Response.Headers.CacheControl = "private, no-store";
+            if (preview == true)
+            {
+                ctx.Response.Headers.ContentDisposition = "inline";
+                return Results.File(path, FileStorage.ContentType(path));
+            }
             return Results.File(path, FileStorage.ContentType(path), $"attachment-{lead.Id}{Path.GetExtension(path)}");
         }).RequireAuthorization("BackOffice");
     }

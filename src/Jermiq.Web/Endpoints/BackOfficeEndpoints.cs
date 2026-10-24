@@ -1,6 +1,8 @@
 using System.ComponentModel.DataAnnotations;
 using System.Text;
 using System.Text.Json;
+using System.Globalization;
+using System.Security.Claims;
 using System.Text.RegularExpressions;
 using Jermiq.Web.Data;
 using Jermiq.Web.Models;
@@ -33,14 +35,15 @@ public static class BackOfficeEndpoints
             const int pageSize = 25;
             var total = await query.CountAsync(ct);
             page = Math.Min(page, Math.Max(1, (total + pageSize - 1) / pageSize));
-            var ordered = ctx.Request.Query["sort"] == "oldest" ? query.OrderBy(x => x.CreatedAt).ThenBy(x => x.Id) : query.OrderByDescending(x => x.CreatedAt).ThenBy(x => x.Id);
+            var ordered = OrderLeads(query, db, ctx.Request.Query["sort"].ToString());
             var leads = await ordered.Skip((page - 1) * pageSize).Take(pageSize).ToListAsync(ct);
             var keys = leads.Select(x => "office:" + x.Id).ToArray();
             var rows = await db.Settings.AsNoTracking().Where(x => keys.Contains(x.Key)).ToDictionaryAsync(x => x.Key, ct);
             var staff = await users.GetUsersInRoleAsync("Office");
             var admins = await users.GetUsersInRoleAsync("Admin");
             return Results.Json(new { leads = leads.Select(x => new { lead = x, office = Office(x, rows.GetValueOrDefault("office:" + x.Id)) }),
-                total, page, pageSize, stats = await db.Leads.GroupBy(x => x.Status).Select(x => new { status = x.Key, count = x.Count() }).ToListAsync(ct),
+                total, page, pageSize, viewerId = ctx.User.FindFirstValue(ClaimTypes.NameIdentifier),
+                stats = await db.Leads.GroupBy(x => x.Status).Select(x => new { status = x.Key, count = x.Count() }).ToListAsync(ct),
                 kinds = await db.Leads.Select(x => x.Kind).Distinct().OrderBy(x => x).ToListAsync(ct),
                 staff = staff.Concat(admins).DistinctBy(x => x.Id).Where(x => !x.LockoutEnd.HasValue || x.LockoutEnd <= DateTimeOffset.UtcNow).Select(x => new { id = x.Id, name = x.Email }) });
         }).RequireAuthorization("BackOffice");
@@ -57,6 +60,8 @@ public static class BackOfficeEndpoints
             await anti.ValidateRequestAsync(ctx);
             if (!ctx.Request.HasFormContentType) return Error("Ընտրեք լուսանկարը։");
             var form = await ctx.Request.ReadFormAsync(ct);
+            var photo = form["photo"].ToString();
+            if (photo.Length > 0 && photo is not ("1" or "2")) return Error("Ընտրեք լուսանկարի ճիշտ տեսակը։");
             await using var transaction = await db.Database.BeginTransactionAsync(ct);
             var lead = await db.Leads.SingleOrDefaultAsync(x => x.Id == form["id"].ToString(), ct);
             if (lead is null) return Error("Հայտը չի գտնվել։", 404);
@@ -68,19 +73,24 @@ public static class BackOfficeEndpoints
             string path;
             try { path = await storage.SaveAsync("leads", Guid.NewGuid().ToString(), await FileStorage.ValidateImageAsync(file, ct), ct); }
             catch (ArgumentException e) { return Error(e.Message); }
-            var previous = lead.Attachment;
-            lead.Attachment = path;
-            Record(office, ctx, "Կցվել է լուսանկար");
+            var previous = photo == "2" ? LeadPhotos.Label(lead) : lead.Attachment;
+            if (photo == "2")
+            {
+                var details = LeadPhotos.Details(lead);
+                details["labelAttachment"] = path;
+                lead.Details = details.ToJsonString(SiteJson.Options);
+            }
+            else lead.Attachment = path;
+            Record(office, ctx, photo == "2" ? "Կցվել է տեխնիկական պիտակի լուսանկար" : "Կցվել է լուսանկար");
             StoreOffice(db, lead.Id, row, office);
-            try { await db.SaveChangesAsync(ct); }
+            try { await db.SaveChangesAsync(ct); await transaction.CommitAsync(ct); }
             catch { storage.Delete(path); throw; }
-            await transaction.CommitAsync(ct);
-            storage.Delete(previous);
+            if (previous != lead.Attachment && previous != LeadPhotos.Label(lead)) storage.Delete(previous);
             return Results.Json(new { ok = true, revision = office.Revision });
         }).RequireAuthorization("BackOffice");
         app.MapGet("/api/admin/export", async (HttpContext ctx, AppDbContext db, CancellationToken ct) =>
         {
-            var leads = await Filter(db, ctx).OrderByDescending(x => x.CreatedAt).Take(10000).ToListAsync(ct);
+            var leads = await OrderLeads(Filter(db, ctx), db, ctx.Request.Query["sort"].ToString()).Take(10000).ToListAsync(ct);
             static string Cell(string value)
             {
                 // Spreadsheet programs must not interpret client data as formulas.
@@ -120,6 +130,18 @@ public static class BackOfficeEndpoints
     {
         string Option(string key) { var value = ctx.Request.Query[key].ToString(); return value == "all" ? "" : value; }
         var priority = Option("priority"); var source = Option("source"); var assignee = Option("assignee"); var due = Option("due");
+        var view = Option("view"); var photos = Option("photos");
+        var viewer = ctx.User.FindFirstValue(ClaimTypes.NameIdentifier) ?? "";
+        var today = new DateTimeOffset(DateTimeOffset.UtcNow.ToOffset(TimeSpan.FromHours(4)).Date, TimeSpan.FromHours(4));
+        var todayStart = today.ToString("O"); var tomorrow = today.AddDays(1).ToString("O");
+        long? DateBound(string key, bool end)
+        {
+            if (!DateOnly.TryParseExact(ctx.Request.Query[key].ToString(), "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var date)) return null;
+            if (date == DateOnly.MinValue) return end ? new DateTimeOffset(date.AddDays(1).ToDateTime(TimeOnly.MinValue), TimeSpan.FromHours(4)).ToUnixTimeMilliseconds() : DateTimeOffset.MinValue.ToUnixTimeMilliseconds();
+            if (end && date == DateOnly.MaxValue) return DateTimeOffset.MaxValue.ToUnixTimeMilliseconds();
+            return new DateTimeOffset(date.ToDateTime(TimeOnly.MinValue), TimeSpan.FromHours(4)).AddDays(end ? 1 : 0).ToUnixTimeMilliseconds();
+        }
+        var from = DateBound("dateFrom", false); var to = DateBound("dateTo", true);
         var search = ctx.Request.Query["q"].ToString().Trim();
         if (search.Length > 200) search = search[..200];
         // EF's SQLite connection registers .NET REGEXP. Literal escaping prevents user regex patterns.
@@ -130,6 +152,17 @@ public static class BackOfficeEndpoints
             AND ({source} = '' OR COALESCE(json_extract(s."Value", '$.source'), 'website') = {source})
             AND ({assignee} = '' OR ({assignee} = '__unassigned' AND COALESCE(json_extract(s."Value", '$.assignee'), '') = '') OR json_extract(s."Value", '$.assignee') = {assignee})
             AND ({due} != 'overdue' OR (l."Status" NOT IN ('completed', 'cancelled') AND julianday(json_extract(s."Value", '$.dueAt')) < julianday('now')))
+            AND ({due} != 'today' OR (l."Status" NOT IN ('completed', 'cancelled') AND julianday(json_extract(s."Value", '$.dueAt')) >= julianday({todayStart}) AND julianday(json_extract(s."Value", '$.dueAt')) < julianday({tomorrow})))
+            AND ({due} != 'upcoming' OR (l."Status" NOT IN ('completed', 'cancelled') AND julianday(json_extract(s."Value", '$.dueAt')) >= julianday({tomorrow})))
+            AND ({view} != 'new' OR l."Status" = 'new')
+            AND ({view} NOT IN ('active', 'mine', 'unassigned', 'overdue') OR l."Status" NOT IN ('completed', 'cancelled'))
+            AND ({view} != 'mine' OR COALESCE(json_extract(s."Value", '$.assignee'), '') = {viewer})
+            AND ({view} != 'unassigned' OR COALESCE(json_extract(s."Value", '$.assignee'), '') = '')
+            AND ({view} != 'overdue' OR julianday(json_extract(s."Value", '$.dueAt')) < julianday('now'))
+            AND ({view} != 'photos' OR COALESCE(l."Attachment", '') != '' OR (CASE WHEN json_valid(l."Details") THEN COALESCE(json_extract(l."Details", '$.labelAttachment'), '') ELSE '' END) != '')
+            AND ({photos} != 'with' OR COALESCE(l."Attachment", '') != '' OR (CASE WHEN json_valid(l."Details") THEN COALESCE(json_extract(l."Details", '$.labelAttachment'), '') ELSE '' END) != '')
+            AND ({photos} != 'without' OR (COALESCE(l."Attachment", '') = '' AND (CASE WHEN json_valid(l."Details") THEN COALESCE(json_extract(l."Details", '$.labelAttachment'), '') ELSE '' END) = ''))
+            AND ({from} IS NULL OR l."CreatedAt" >= {from}) AND ({to} IS NULL OR l."CreatedAt" < {to})
             AND ({pattern} = '' OR l."Name" REGEXP {pattern} OR l."Phone" REGEXP {pattern} OR l."Email" REGEXP {pattern}
                 OR l."Message" REGEXP {pattern} OR l."Id" REGEXP {pattern}
                 OR (CASE WHEN json_valid(l."Details") THEN json_extract(l."Details", '$.subject') ELSE l."Details" END) REGEXP {pattern}
@@ -141,6 +174,26 @@ public static class BackOfficeEndpoints
         if (status.Length > 0 && status != "all") query = query.Where(x => x.Status == status);
         if (kind.Length > 0 && kind != "all") query = query.Where(x => x.Kind == kind);
         return query;
+    }
+    private static IQueryable<Lead> OrderLeads(IQueryable<Lead> query, AppDbContext db, string sort)
+    {
+        if (sort is not ("priority" or "due"))
+            return sort == "oldest" ? query.OrderBy(x => x.CreatedAt).ThenBy(x => x.Id) : query.OrderByDescending(x => x.CreatedAt).ThenBy(x => x.Id);
+        var ranks = db.Database.SqlQuery<LeadRank>($"""
+            SELECT l."Id", CASE COALESCE(json_extract(s."Value", '$.priority'), 'normal')
+                WHEN 'urgent' THEN 4 WHEN 'high' THEN 3 WHEN 'low' THEN 1 ELSE 2 END AS "PriorityRank",
+                COALESCE(julianday(json_extract(s."Value", '$.dueAt')), 1e20) AS "DueRank"
+            FROM "Leads" l LEFT JOIN "Settings" s ON s."Key" = 'office:' || l."Id"
+            """);
+        var joined = query.Join(ranks, lead => lead.Id, rank => rank.Id, (lead, rank) => new { lead, rank });
+        return sort == "priority" ? joined.OrderByDescending(x => x.rank.PriorityRank).ThenByDescending(x => x.lead.CreatedAt).ThenBy(x => x.lead.Id).Select(x => x.lead)
+            : joined.OrderBy(x => x.lead.Status == "completed" || x.lead.Status == "cancelled").ThenBy(x => x.rank.DueRank).ThenByDescending(x => x.lead.CreatedAt).ThenBy(x => x.lead.Id).Select(x => x.lead);
+    }
+    private sealed class LeadRank
+    {
+        public string Id { get; set; } = "";
+        public int PriorityRank { get; set; }
+        public double DueRank { get; set; }
     }
     private static async Task<IResult> SaveLeadAsync(HttpContext ctx, IAntiforgery anti, AppDbContext db, UserManager<IdentityUser> users, CancellationToken ct)
     {
@@ -180,7 +233,9 @@ public static class BackOfficeEndpoints
         var action = created ? "Հայտը ստեղծվել է օֆիսից" : "Request edited";
         lead!.Kind = edit.Kind.Trim(); lead.Name = edit.Name.Trim(); lead.Phone = edit.Phone.Trim(); lead.Email = edit.Email?.Trim() ?? "";
         lead.Message = edit.Message.Trim(); lead.Status = edit.Status;
-        lead.Details = SiteJson.Serialize(new { subject = edit.Subject.Trim(), brand = edit.Brand.Trim(), model = edit.Model.Trim(), selection = edit.Selection.Trim(), labelAttachment = LeadPhotos.Label(lead) });
+        var details = LeadPhotos.Details(lead);
+        details["subject"] = edit.Subject.Trim(); details["brand"] = edit.Brand.Trim(); details["model"] = edit.Model.Trim(); details["selection"] = edit.Selection.Trim();
+        lead.Details = details.ToJsonString(SiteJson.Options);
         office.Source = edit.Source; office.Priority = edit.Priority; office.Assignee = edit.Assignee;
         office.Address = edit.Address.Trim(); office.Subject = edit.Subject.Trim(); office.Brand = edit.Brand.Trim(); office.Model = edit.Model.Trim(); office.Selection = edit.Selection.Trim(); office.DueAt = edit.DueAt;
         if (!string.IsNullOrWhiteSpace(edit.Note)) office.Notes.Add(new OfficeNote(DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(), ctx.User.Identity?.Name ?? "", edit.Note.Trim()));
@@ -202,13 +257,11 @@ public static class BackOfficeEndpoints
     {
         if (row is not null) return SiteJson.Deserialize<OfficeLead>(row.Value);
         var result = new OfficeLead();
-        try
-        {
-            var details = SiteJson.Deserialize<Dictionary<string, string>>(lead.Details);
-            result.Subject = details.GetValueOrDefault("subject") ?? ""; result.Brand = details.GetValueOrDefault("brand") ?? "";
-            result.Model = details.GetValueOrDefault("model") ?? ""; result.Selection = details.GetValueOrDefault("selection") ?? "";
-        }
-        catch (JsonException) { }
+        var details = LeadPhotos.Details(lead);
+        string Field(string key) => details[key] is System.Text.Json.Nodes.JsonValue value && value.TryGetValue<string>(out var text) ? text ?? "" : "";
+        result.Subject = Field("subject"); result.Brand = Field("brand");
+        result.Model = Field("model"); result.Selection = Field("selection"); result.Address = Field("address");
+        if (result.Selection.Length == 0) result.Selection = Field("legacyDetails");
         return result;
     }
     public static void Record(OfficeLead office, HttpContext ctx, string action, Dictionary<string, string>? changes = null)

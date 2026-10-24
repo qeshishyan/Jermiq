@@ -32,6 +32,7 @@
     stamp: '<path d="M5 22h14M6 18v-3h12v3ZM9 15V9a3 3 0 1 1 6 0v6"/>',
     refresh: '<path d="M3 11a9 9 0 0 1 15-6l3 3M21 3v5h-5m5 5a9 9 0 0 1-15 6l-3-3M3 21v-5h5"/>',
     clock: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
+    image: '<rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="8" cy="8" r="1.5"/><path d="m3 17 6-6 4 4 3-3 5 5"/>',
     plus: '<path d="M12 5v14M5 12h14"/>',
     check: '<circle cx="12" cy="12" r="10"/><path d="m8 12 3 3 5-6"/>',
     package: '<path d="m12 3 9 5v10l-9 5-9-5V8ZM3 8l9 5 9-5m-9 5v10M7 5.8l9 5"/>',

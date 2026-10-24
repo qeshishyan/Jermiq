@@ -38,7 +38,7 @@ async function page(route, admin = false) {
   };
   w.eval(fs.readFileSync(path.join(root, 'src/Jermiq.Web/wwwroot/js/site.js'), 'utf8'));
   w.eval(fs.readFileSync(path.join(root, 'src/Jermiq.Web/wwwroot/js/storefront.js'), 'utf8'));
-  if (admin) w.eval(fs.readFileSync(path.join(root, 'src/Jermiq.Web/wwwroot/js/admin.js'), 'utf8'));
+  if (admin) { w.eval(fs.readFileSync(path.join(root, 'src/Jermiq.Web/wwwroot/js/lead-desk.js'), 'utf8')); w.eval(fs.readFileSync(path.join(root, 'src/Jermiq.Web/wwwroot/js/admin.js'), 'utf8')); }
   return dom;
 }
 const waitUntil = async predicate => {

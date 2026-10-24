@@ -9,6 +9,7 @@
 <link rel="stylesheet" href="/css/store-admin.css" asp-append-version="true" />
 <link rel="stylesheet" href="/css/brand.css" asp-append-version="true" />
 <meta name="application-name" content="@BrandIdentity.Name" /><meta name="theme-color" content="#163650" />
+@if (Context.Request.Path == "/admin") { <link rel="stylesheet" href="/css/lead-desk.css" asp-append-version="true" /> }
 </head>
 <body class="office-body"><a href="#main" class="skip-link">@L["Անցնել բովանդակությանը"]</a>
 @RenderBody()

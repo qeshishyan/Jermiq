@@ -10,6 +10,8 @@ import os
 from pathlib import Path
 import re
 import socket
+import sqlite3
+from datetime import datetime, timedelta, timezone
 import subprocess
 import tempfile
 import time
@@ -150,9 +152,9 @@ def main():
                 check('Audit records field changes', 'Status' in saved['office']['history'][-1]['changes'])
                 png = base64.b64decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jR5kAAAAASUVORK5CYII=')
                 boundary = 'office-' + uuid.uuid4().hex
-                def upload(revision):
+                def upload(revision, photo='1'):
                     parts = []
-                    for key, value in [('id', edit['id']), ('revision', str(revision))]:
+                    for key, value in [('id', edit['id']), ('revision', str(revision)), ('photo', photo)]:
                         parts.append(f'--{boundary}\r\nContent-Disposition: form-data; name="{key}"\r\n\r\n{value}\r\n'.encode())
                     parts.append(f'--{boundary}\r\nContent-Disposition: form-data; name="attachment"; filename="test.png"\r\nContent-Type: image/png\r\n\r\n'.encode() + png + b'\r\n')
                     parts.append(f'--{boundary}--\r\n'.encode())
@@ -165,6 +167,36 @@ def main():
                 check('Office attachment saved', upload(saved['office']['revision']) == 200)
                 check('Stale office attachment rejected', upload(saved['office']['revision']) == 409)
                 check('Office attachment downloads correctly', request('/api/attachments?id=' + edit['id'], client=office)[2] == png)
+                saved = get('/api/admin/lead/' + edit['id'], office)
+
+                preview = request('/api/attachments?id=' + edit['id'] + '&preview=true', client=office)
+                check('Authorized image preview uses inline display and private no-store',
+                      preview[0] == 200 and preview[2] == png and preview[1].get('Content-Disposition') == 'inline'
+                      and 'no-store' in preview[1].get('Cache-Control', '') and preview[1]['Content-Type'] == 'image/png')
+                check('Default attachment remains a download',
+                      'attachment;' in request('/api/attachments?id=' + edit['id'], client=office)[1].get('Content-Disposition', ''))
+                check('Invalid photo slot does not expose another image',
+                      request('/api/attachments?id=' + edit['id'] + '&photo=3&preview=true', client=office)[0] == 404)
+                # Existing unknown structured context must survive photo changes and office edits.
+                with sqlite3.connect(Path(temp) / 'jermiq.db') as db:
+                    details = json.loads(db.execute('SELECT Details FROM Leads WHERE Id = ?', (edit['id'],)).fetchone()[0])
+                    details['finderContext'] = {'modelId': 'qa-preserved-model', 'source': 'photo'}
+                    db.execute('UPDATE Leads SET Details = ? WHERE Id = ?', (json.dumps(details), edit['id']))
+                check('Technical-label photo uploads independently', upload(saved['office']['revision'], '2') == 200)
+                labeled = get('/api/admin/lead/' + edit['id'], office)
+                check('Second image preserves the main image and structured context',
+                      labeled['lead']['attachment'] == saved['lead']['attachment'] and
+                      json.loads(labeled['lead']['details'])['finderContext']['modelId'] == 'qa-preserved-model' and
+                      request('/api/attachments?id=' + edit['id'] + '&photo=2&preview=true', client=office)[2] == png)
+                check('Invalid photo upload slot is rejected before mutation', upload(labeled['office']['revision'], '3') == 400)
+                check('Stale second-photo replacement leaves existing photos intact',
+                      upload(saved['office']['revision'], '2') == 409 and
+                      get('/api/admin/lead/' + edit['id'], office)['office']['revision'] == labeled['office']['revision'])
+                preserve_edit = {**edit, 'revision': labeled['office']['revision'], 'note': ''}
+                check('Editing a request preserves both photos and unknown context',
+                      request('/api/admin/lead', preserve_edit, office_token, office)[0] == 200 and
+                      json.loads(get('/api/admin/lead/' + edit['id'], office)['lead']['details'])['finderContext'] == details['finderContext'] and
+                      request('/api/attachments?id=' + edit['id'] + '&photo=2', client=office)[2] == png)
                 saved = get('/api/admin/lead/' + edit['id'], office)
 
                 filtered = get('/api/admin/leads?q=Office%20customer&status=completed&kind=custom-repair', office)
@@ -193,6 +225,53 @@ def main():
                 check('Stale bulk status rejected atomically', request('/api/admin/leads/bulk-status', stale, office_token, office)[0] == 409 and get('/api/admin/lead/' + deadline['id'], office)['lead']['status'] == 'in_progress')
                 check('Bulk status updates selected requests', request('/api/admin/leads/bulk-status', batch, office_token, office)[0] == 200 and get('/api/admin/lead/' + deadline['id'], office)['lead']['status'] == 'waiting')
                 check('Bulk status is recorded in history', get('/api/admin/lead/' + deadline['id'], office)['office']['history'][-1]['action'] == 'Bulk status update')
+
+                today = datetime.now(timezone(timedelta(hours=4))).date()
+                fixture_ids = []
+                for i, (priority, due, assigned) in enumerate([
+                    ('urgent', str(today) + 'T10:00:00+04:00', assignee),
+                    ('normal', '2001-01-01T12:00:00+04:00', ''),
+                    ('high', str(today + timedelta(days=2)) + 'T15:00:00+04:00', '')]):
+                    fixture = {**edit, 'id': str(uuid.uuid4()), 'revision': 0, 'name': f'Desk queue fixture {i}', 'note': '',
+                               'priority': priority, 'dueAt': due, 'assignee': assigned, 'status': 'in_progress'}
+                    check('Queue fixture created ' + str(i), request('/api/admin/lead', fixture, office_token, office)[0] == 201)
+                    fixture_ids.append(fixture['id'])
+                fixture_query = '/api/admin/leads?q=Desk%20queue%20fixture'
+                check('Priority ordering happens before server pagination',
+                      [x['lead']['id'] for x in get(fixture_query + '&sort=priority', office)['leads']] == [fixture_ids[i] for i in [0, 2, 1]])
+                check('Deadline ordering uses real dates',
+                      [x['lead']['id'] for x in get(fixture_query + '&sort=due', office)['leads']] == [fixture_ids[i] for i in [1, 0, 2]])
+                mine = get(fixture_query + '&view=mine', office)
+                check('My queue uses the authenticated employee identity', mine['viewerId'] == assignee and [x['lead']['id'] for x in mine['leads']] == fixture_ids[:1])
+                check('Mine is not impersonated by assignee query input', get(fixture_query + '&view=mine')['total'] == 0)
+                check('Unassigned queue includes only active unassigned requests',
+                      {x['lead']['id'] for x in get(fixture_query + '&view=unassigned', office)['leads']} == set(fixture_ids[1:]))
+                check('Due-today filter follows the Yerevan day',
+                      [x['lead']['id'] for x in get(fixture_query + '&due=today', office)['leads']] == fixture_ids[:1])
+                check('Upcoming deadlines exclude today and overdue requests',
+                      [x['lead']['id'] for x in get(fixture_query + '&due=upcoming', office)['leads']] == fixture_ids[2:])
+                check('Photo filter finds either protected image',
+                      edit['id'] in {x['lead']['id'] for x in get('/api/admin/leads?photos=with', office)['leads']}
+                      and edit['id'] not in {x['lead']['id'] for x in get('/api/admin/leads?photos=without', office)['leads']})
+                check('Date range includes both bounds in local calendar days',
+                      get(fixture_query + '&dateFrom=' + str(today) + '&dateTo=' + str(today), office)['total'] == 3)
+                check('Future received-date filter excludes existing requests', get(fixture_query + '&dateFrom=2100-01-01', office)['total'] == 0)
+                check('Extreme calendar bounds remain safe', get(fixture_query + '&dateFrom=0001-01-01&dateTo=9999-12-31', office)['total'] == 3)
+                first = get('/api/admin/lead/' + fixture_ids[0], office)
+                second = get('/api/admin/lead/' + fixture_ids[1], office)
+                workflow = {'revisions': {fixture_ids[0]: first['office']['revision'], fixture_ids[1]: second['office']['revision']},
+                            'priority': 'high', 'assignee': assignee, 'status': 'contacted'}
+                check('Bulk workflow requires CSRF', request('/api/admin/leads/bulk-workflow', workflow, client=office)[0] == 400)
+                stale = {**workflow, 'revisions': {fixture_ids[0]: 0, fixture_ids[1]: second['office']['revision']}}
+                check('Bulk workflow conflict is atomic', request('/api/admin/leads/bulk-workflow', stale, office_token, office)[0] == 409 and
+                      get('/api/admin/lead/' + fixture_ids[1], office)['office']['priority'] == 'normal')
+                check('Unknown employee cannot be assigned in bulk', request('/api/admin/leads/bulk-workflow', {**workflow, 'assignee': 'unknown'}, office_token, office)[0] == 400)
+                check('Empty bulk changes cannot be applied', request('/api/admin/leads/bulk-workflow', {'revisions': workflow['revisions']}, office_token, office)[0] == 400)
+                check('Bulk workflow updates status, priority and employee together', request('/api/admin/leads/bulk-workflow', workflow, office_token, office)[0] == 200)
+                updated = get('/api/admin/lead/' + fixture_ids[1], office)
+                check('Bulk workflow preserves a descriptive audit trail', updated['lead']['status'] == 'contacted' and updated['office']['priority'] == 'high' and
+                      updated['office']['assignee'] == assignee and updated['office']['history'][-1]['action'] == 'Bulk workflow update' and
+                      set(updated['office']['history'][-1]['changes']) == {'Status', 'Priority', 'Assignee'})
                 current_product = next(p for p in get('/api/admin')['products'] if p['slug'] == product['slug'])
                 check('Stale product update rejected', request('/api/admin', {'action':'product','product':product}, token)[0] == 409 and current_product['revision'] > product['revision'])
 
@@ -207,6 +286,7 @@ def main():
                 account = next(u for u in get('/api/admin/users')['users'] if u['email'] == user['email'])
                 check('Office account disabled', request('/api/admin/users', {**account, 'password': '', 'disabled': True}, token)[0] == 200)
                 check('Existing disabled session rejected immediately', request('/api/admin/leads', client=office)[0] == 401)
+                check('Disabled session cannot preview request photos', request('/api/attachments?id=' + edit['id'] + '&preview=true', client=office)[0] == 401)
                 own = next(u for u in get('/api/admin/users')['users'] if u['email'] == 'admin@example.invalid')
                 check('Self administrator removal prevented', request('/api/admin/users', {**own, 'password': '', 'role': 'Office'}, token)[0] == 400)
                 anon = urllib.request.build_opener()
@@ -214,6 +294,8 @@ def main():
                 check('Anonymous dashboard blocked', request('/api/admin/dashboard', client=anon)[0] == 401)
                 check('Anonymous bulk changes blocked', request('/api/admin/leads/bulk-status', {'status':'new','revisions':{}}, client=anon)[0] == 401)
                 check('Anonymous arrival feed blocked', request('/api/admin/arrivals', client=anon)[0] == 401)
+                check('Anonymous photo preview blocked', request('/api/attachments?id=' + edit['id'] + '&photo=2&preview=true', client=anon)[0] == 401)
+                check('Anonymous workflow changes blocked', request('/api/admin/leads/bulk-workflow', workflow, client=anon)[0] == 401)
                 check('Anonymous CMS access blocked', request('/api/admin/cms', client=anon)[0] == 401)
                 if os.environ.get('JERMIQ_BROWSER_TESTS') == '1':
                     jar = next(h.cookiejar for h in admin.handlers if hasattr(h, 'cookiejar'))

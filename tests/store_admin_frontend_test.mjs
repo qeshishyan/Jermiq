@@ -57,7 +57,7 @@ try {
   check('Conflicting revision displays an error and keeps the draft', home.elements.title.value === 'Stale draft stays here');
   click('#store-refresh'); await wait(() => ready() && d.querySelector('#store-error').hidden);
 
-  productDom = await open('/admin?lang=hy&section=products', ['site.js', 'store-admin.js', 'admin.js']);
+  productDom = await open('/admin?lang=hy&section=products', ['site.js', 'store-admin.js', 'lead-desk.js', 'admin.js']);
   const pw = productDom.window, pd = pw.document;
   const productReady = () => !pd.querySelector('#admin-refresh').disabled;
   await wait(() => productReady() && pd.querySelector('[data-edit-product]'));
