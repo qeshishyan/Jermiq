@@ -114,3 +114,10 @@ Release build՝ 0 սխալ, 0 զգուշացում։ Արդյունքները՝
 DOM ստուգումները իրական API-ով կցում են երկու նկար, բացում մեծացված դիտումը, փոխում նկարը ստեղնաշարով և մեծացնում այն։ Նկարի կցումից հետո չպահպանված դաշտն ու ներքին նշումը մնում են խմբագրիչում։ Ստուգված են նաև ժամկետի UTC+4 արտածումն ու պահպանումը, հայտի տեսակի հասկանալի անունը և դրա կայուն սերվերային կոդը։
 
 Chromium-ում անցել են 25 լրացուցիչ ստուգում՝ ցուցակի քարտեր, իրական պաշտպանված նախադիտումներ, երկու նկարի դիտում, իրական մեծացում, Escape, չպահպանված տվյալներով նկարի փոխարինում և խմբային պատասխանատու/առաջնահերթություն։ 768px, 390px և 320px չափերում ցուցակը, խմբագրիչն ու նկարի պատուհանը տեղավորվում են էկրանին։ JavaScript բացառություններ կամ տեղական ռեսուրսների HTTP սխալներ չեն գրանցվել։ Տեսողական տվյալները ստեղծվել են միայն առանձին preview բազայում։
+
+### Customer request and checkout popups
+
+- Release build: 0 warnings and 0 errors.
+- Smoke suite: 172 HTTP checks and 47 DOM checks passed, including real callback submission, errors retaining entered values, optional field validation, order summary and delivery address requirements.
+- Chromium review: all five request types and checkout fit desktop, 390px and 320px screens; private local photo previews can be removed; no JavaScript errors (44 checks).
+- Customer form text is available in Armenian, English and Russian. No database migration required.

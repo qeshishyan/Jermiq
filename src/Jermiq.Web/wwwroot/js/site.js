@@ -65,15 +65,19 @@
     const el = $('#site-toast'); el.textContent = message; el.hidden = false;
     clearTimeout(toastTimer); toastTimer = setTimeout(() => { el.hidden = true; }, 5000);
   }
+  const photoUrls = new Map();
   const dialog = $('#site-dialog');
   function openDialog(title, description, content, wide = false) {
     $('#dialog-title').textContent = title; $('#dialog-description').textContent = description;
-    const target = $('#dialog-content'); target.replaceChildren();
+    const target = $('#dialog-content');
+    photoUrls.forEach((url, input) => { if (target.contains(input)) { URL.revokeObjectURL(url); photoUrls.delete(input); } });
+    target.replaceChildren();
     if (typeof content === 'string') target.innerHTML = content; else target.append(content);
-    dialog.classList.toggle('wide', wide); icons(dialog);
+    dialog.classList.toggle('wide', wide); enhanceCustomerForms(target); icons(dialog);
     if (!dialog.open) { dialog.showModal(); document.body.classList.add('modal-open'); }
   }
-  const closeDialog = () => dialog.close();
+  const closeDialog = () => { if (!$('[aria-busy="true"]', dialog)) dialog.close(); };
+  dialog.addEventListener('cancel', event => { if ($('[aria-busy="true"]', dialog)) event.preventDefault(); });
   dialog.addEventListener('close', () => document.body.classList.remove('modal-open'));
   dialog.addEventListener('click', e => { if (e.target === dialog) { const r = dialog.getBoundingClientRect(); if (e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom) closeDialog(); } });
   window.Jermiq = Object.freeze({ $, $$, escape, icons, api, toast, openDialog, closeDialog, t, link });
@@ -98,8 +102,61 @@
     }
     $('.message-label', form).textContent = spec.kind === 'callback' ? t("Ե՞րբ է հարմար զանգել") : t("Հարցը կամ լրացուցիչ մանրամասները");
     form.elements.message.placeholder = spec.kind === 'service' ? t("Նկարագրեք խնդիրը, նշեք հասցեն կամ տարածքը։") : t("Գրեք, թե ինչով կարող ենք օգնել։");
-    openDialog(titles[spec.kind], t("Թողեք ձեր տվյալները և հարցը։ Մենք կկարողանանք կապ հաստատել ձեզ հետ։"), content);
+    const descriptions = {
+      service: 'Նշեք խնդիրը և հեռախոսահամարը։ Այցի մանրամասները կհամաձայնեցնենք ձեզ հետ։',
+      part: 'Ուղարկեք մոդելը կամ լուսանկարները։ Կօգնենք ճշտել անհրաժեշտ պահեստամասը։',
+      callback: 'Թողեք անունն ու հեռախոսահամարը։ Հարմար ժամը կարող եք նշել լրացուցիչ դաշտում։',
+      question: 'Գրեք ձեր հարցը։ Մեր թիմը կկապվի նշված հեռախոսահամարով։',
+      order: 'Թողեք կոնտակտները։ Գինն ու ստացման պայմանները կհաստատենք միասին։'
+    };
+    openDialog(titles[spec.kind], t(descriptions[spec.kind]), content);
   }
+  // Shared presentation for popup and server-rendered customer forms.
+  function enhanceCustomerForms(root) {
+    $$('.request-form, .store-checkout-form', root).forEach(form => {
+      if (form.dataset.enhanced) return;
+      form.dataset.enhanced = 'true'; form.classList.add('customer-form');
+      const grid = $('.form-grid', form);
+      const heading = document.createElement('div'); heading.className = 'customer-section-heading';
+      heading.innerHTML = `<span>01</span><div><strong>${escape(t('Ձեր կոնտակտները'))}</strong><small>${escape(t('Պարտադիր են միայն աստղանիշով դաշտերը։'))}</small></div>`;
+      grid.before(heading);
+      const extras = document.createElement('details'); extras.className = 'customer-extras';
+      const summary = document.createElement('summary'); summary.textContent = t('Լրացուցիչ մանրամասներ՝ ըստ ցանկության'); extras.append(summary);
+      const fields = document.createElement('div'); fields.className = 'form-grid'; extras.append(fields);
+      ['email', ...(form.elements.kind?.value === 'question' ? [] : ['message']), 'brand', 'model'].forEach(name => {
+        const field = form.elements[name]?.closest('label.field'); if (field) fields.append(field);
+      });
+      if (fields.children.length) grid.after(extras);
+      const photo = $('.photo-guide', form);
+      if (photo) { photo.classList.add('customer-photos'); extras.after(photo); }
+      const footer = document.createElement('div'); footer.className = 'customer-submit-bar';
+      const submit = $('button[type="submit"]', form); submit.before(footer); footer.append(submit);
+      const reassurance = document.createElement('small'); reassurance.textContent = t('Կստուգենք տվյալները և կկապվենք ձեզ հետ։'); footer.append(reassurance);
+      form.addEventListener('invalid', event => {
+        const section = event.target.closest('details'); if (section) section.open = true;
+      }, true);
+      $$('input[type="file"]', form).forEach(input => {
+        const label = input.closest('label'); label.classList.add('customer-upload');
+        const preview = document.createElement('div'); preview.className = 'customer-photo-preview'; preview.hidden = true; label.append(preview);
+        input.addEventListener('change', () => {
+          if (photoUrls.has(input)) URL.revokeObjectURL(photoUrls.get(input)); photoUrls.delete(input);
+          preview.replaceChildren(); preview.hidden = true; input.setCustomValidity('');
+          const file = input.files?.[0]; if (!file) return;
+          if (file.size > 5 * 1024 * 1024 || !['image/jpeg','image/png','image/webp'].includes(file.type)) {
+            input.setCustomValidity(t('Կցեք JPEG, PNG կամ WebP լուսանկար՝ մինչև 5 ՄԲ։')); input.reportValidity(); return;
+          }
+          const url = URL.createObjectURL(file); photoUrls.set(input, url);
+          const image = document.createElement('img'); image.src = url; image.alt = file.name;
+          const caption = document.createElement('small'); caption.textContent = file.name;
+          const remove = document.createElement('button'); remove.type = 'button'; remove.className = 'text-link'; remove.textContent = t('Հեռացնել նկարը');
+          remove.addEventListener('click', () => { input.value = ''; input.dispatchEvent(new Event('change')); });
+          preview.append(image, caption, remove); preview.hidden = false;
+        });
+      });
+    });
+  }
+  dialog.addEventListener('close', () => { photoUrls.forEach(url => URL.revokeObjectURL(url)); photoUrls.clear(); });
+  enhanceCustomerForms(document);
   function uuid() {
     if (crypto.randomUUID) return crypto.randomUUID();
     const bytes = crypto.getRandomValues(new Uint8Array(16)); bytes[6] = (bytes[6] & 15) | 64; bytes[8] = (bytes[8] & 63) | 128;
@@ -109,6 +166,8 @@
   document.addEventListener('submit', async e => {
     const form = e.target; if (!form.matches('.request-form')) return; e.preventDefault();
     const error = $('.error-text', form), submit = $('button[type="submit"]', form);
+    if (form.dataset.submitting || !form.reportValidity()) return;
+    form.dataset.submitting = 'true'; form.setAttribute('aria-busy', 'true');
     error.hidden = true; submit.disabled = true; submit.textContent = t("Պահպանվում է…");
     try {
       const data = new FormData(form);
@@ -119,8 +178,9 @@
       const result = await api('/api/leads', { method: 'POST', body: data });
       form.innerHTML = `<div class="success" role="status">${icon('check')}<h3>${escape(t("Ձեր հայտը գրանցված է"))}</h3><p>${escape(t("Տվյալները պահպանվել են։ Հայտը կընդունվի թիմի կողմից՝ կապ հաստատելու համար։"))}</p><div class="reference">${escape(t("Հայտի համարը՝"))} ${escape(result.id)}</div>${settings.showDraftBanner ? `<p class="form-note">${escape(t("Այս տարբերակը նախնական փորձարկման համար է։"))}</p>` : ''}</div>`;
       icons(form);
+      const done = document.createElement('button'); done.type = 'button'; done.className = 'btn btn-outline'; done.textContent = t('Փակել'); done.addEventListener('click', closeDialog); $('.success', form).append(done);
     } catch (err) { error.textContent = err.message; error.hidden = false; }
-    finally { submit.disabled = false; submit.textContent = t("Ուղարկել հայտը"); }
+    finally { delete form.dataset.submitting; form.removeAttribute("aria-busy"); submit.disabled = false; submit.textContent = t("Ուղարկել հայտը"); }
   });
   const products = new Map();
   $$('[data-product]').forEach(el => { const p = JSON.parse(el.dataset.product); products.set(p.slug, p); });
@@ -228,7 +288,8 @@
   function checkout() {
     if (!cart.length) return;
     const field = (label, name, attrs = '') => `<label class="field">${escape(t(label))}<input name="${name}" ${attrs}></label>`;
-    const content = `<form class="store-checkout-form" data-request-id="${uuid()}"><div class="form-grid">${field('Անուն *', 'name', 'required minlength="2" maxlength="100" autocomplete="name"')}${field('Հեռախոս *', 'phone', 'type="tel" required maxlength="30" autocomplete="tel"')}${field('Էլ․ փոստ', 'email', 'type="email" maxlength="200" autocomplete="email"')}<label class="field">${escape(t('Ստացման եղանակ'))}<select name="deliveryMethod"><option value="pickup">${escape(t('Ինքնավերցում'))}</option><option value="delivery">${escape(t('Առաքում'))}</option></select></label><label class="field full" data-checkout-address hidden>${escape(t('Առաքման հասցե'))}<input name="address" maxlength="500" autocomplete="street-address"></label><label class="field full">${escape(t('Վճարման եղանակ'))}<select name="paymentMethod"><option value="manager">${escape(t('Համաձայնեցնել մենեջերի հետ'))}</option><option value="cash">${escape(t('Կանխիկ՝ ստացման պահին'))}</option></select></label><label class="field full">${escape(t('Լրացուցիչ տեղեկություններ'))}<textarea name="message" maxlength="3000"></textarea></label></div><label class="checkbox-line"><input name="consent" type="checkbox" required><span>${escape(t('Համաձայն եմ, որ իմ տվյալներն օգտագործվեն այս հայտի մշակման և ինձ հետ կապ հաստատելու համար։'))} <a class="text-link" href="${link('/privacy')}">${escape(t('Գաղտնիության պայմաններ'))}</a></span></label><p class="form-note">${escape(t('Առաքման արժեքն ու պատվերի վերջնական գումարը հաստատվում են մենեջերի հետ։ Այս քայլում վճարում չի գանձվում։'))}</p><nav class="store-checkout-information" aria-label="${escape(t('Պատվերի պայմաններ'))}"><a href="${link('/delivery')}">${escape(t('Առաքում'))}</a><a href="${link('/payment')}">${escape(t('Վճարում'))}</a><a href="${link('/returns')}">${escape(t('Վերադարձ և փոխանակում'))}</a><a href="${link('/terms')}">${escape(t('Օգտագործման պայմաններ'))}</a></nav><p class="error-text" role="alert" hidden></p><button class="btn w-full" type="submit">${escape(t('Գրանցել պատվերը'))}</button></form>`;
+    const orderSummary = `<section class="customer-order-summary"><strong>${escape(t('Ձեր պատվերի ցանկը'))}</strong>${cart.map(item => { const product = products.get(item.slug); return `<div><span>${escape(product?.title || item.slug)} <small>× ${item.quantity}</small></span><b>${product?.price != null ? price(product.price * item.quantity) : escape(t('Գինը՝ ճշտման ենթակա'))}</b></div>`; }).join('')}<div class="customer-order-total"><strong>${escape(t(cart.every(item => products.get(item.slug)?.price != null) ? 'Ապրանքների արժեքը՝' : 'Հայտնի գների գումարը՝'))}</strong><strong>${price(cart.reduce((sum, item) => sum + (products.get(item.slug)?.price || 0) * item.quantity, 0))}</strong></div><small>${escape(t(cart.every(item => products.get(item.slug)?.price != null) ? 'Առաքման արժեքը կհաստատվի առանձին։' : 'Ցանկում կան չհաստատված գներով ապրանքներ։ Ընդհանուր արժեքը կհամաձայնեցվի կապ հաստատելուց հետո։'))}</small></section>`;
+    const content = `${orderSummary}<form class="store-checkout-form" data-request-id="${uuid()}"><div class="form-grid">${field('Անուն *', 'name', 'required minlength="2" maxlength="100" autocomplete="name"')}${field('Հեռախոս *', 'phone', 'type="tel" required maxlength="30" autocomplete="tel"')}${field('Էլ․ փոստ', 'email', 'type="email" maxlength="200" autocomplete="email"')}<label class="field">${escape(t('Ստացման եղանակ'))}<select name="deliveryMethod"><option value="pickup">${escape(t('Ինքնավերցում'))}</option><option value="delivery">${escape(t('Առաքում'))}</option></select></label><label class="field full" data-checkout-address hidden>${escape(t('Առաքման հասցե'))}<input name="address" maxlength="500" autocomplete="street-address"></label><label class="field full">${escape(t('Վճարման եղանակ'))}<select name="paymentMethod"><option value="manager">${escape(t('Համաձայնեցնել մենեջերի հետ'))}</option><option value="cash">${escape(t('Կանխիկ՝ ստացման պահին'))}</option></select></label><label class="field full">${escape(t('Լրացուցիչ տեղեկություններ'))}<textarea name="message" maxlength="3000"></textarea></label></div><label class="checkbox-line"><input name="consent" type="checkbox" required><span>${escape(t('Համաձայն եմ, որ իմ տվյալներն օգտագործվեն այս հայտի մշակման և ինձ հետ կապ հաստատելու համար։'))} <a class="text-link" href="${link('/privacy')}">${escape(t('Գաղտնիության պայմաններ'))}</a></span></label><p class="form-note">${escape(t('Առաքման արժեքն ու պատվերի վերջնական գումարը հաստատվում են մենեջերի հետ։ Այս քայլում վճարում չի գանձվում։'))}</p><nav class="store-checkout-information" aria-label="${escape(t('Պատվերի պայմաններ'))}"><a href="${link('/delivery')}">${escape(t('Առաքում'))}</a><a href="${link('/payment')}">${escape(t('Վճարում'))}</a><a href="${link('/returns')}">${escape(t('Վերադարձ և փոխանակում'))}</a><a href="${link('/terms')}">${escape(t('Օգտագործման պայմաններ'))}</a></nav><p class="error-text" role="alert" hidden></p><button class="btn w-full" type="submit">${escape(t('Գրանցել պատվերը'))}</button></form>`;
     openDialog(t('Ձևակերպել պատվերը'), t('Ստուգեք կոնտակտներն ու ստացման եղանակը։'), content);
     const form = $('.store-checkout-form');
     form.elements.deliveryMethod.addEventListener('change', () => {
@@ -241,7 +302,7 @@
     if (form.dataset.submitting || !form.reportValidity()) return;
     form.dataset.submitting = 'true';
     const button = $('button[type="submit"]', form), error = $('.error-text', form);
-    button.disabled = true; error.hidden = true;
+    button.disabled = true; button.textContent = t('Պահպանվում է…'); form.setAttribute('aria-busy', 'true'); error.hidden = true;
     try {
       // Keep the same ID and payload on an ambiguous network retry. Editing means a new request.
       const payload = { name: form.elements.name.value.trim(), phone: form.elements.phone.value.trim(), email: form.elements.email.value.trim(), address: form.elements.deliveryMethod.value === 'delivery' ? form.elements.address.value.trim() : '', deliveryMethod: form.elements.deliveryMethod.value, paymentMethod: form.elements.paymentMethod.value, message: form.elements.message.value.trim(), consent: form.elements.consent.checked, items: cart.map(x => ({ slug: x.slug, quantity: x.quantity })) };
@@ -252,8 +313,9 @@
       cart = []; persist(); await renderSaved();
       form.innerHTML = `<div class="success" role="status">${icon('check')}<h3>${escape(t('Պատվերը գրանցված է'))}</h3><p>${escape(t('Մենեջերը կկապվի ձեզ հետ՝ վերջնական գինն ու առաքումը հաստատելու համար։'))}</p><div class="reference">${escape(t('Պատվերի համարը՝'))} ${escape(result.id)}</div>${result.order?.subtotal != null ? `<p>${escape(t('Ապրանքների արժեքը՝'))} ${price(result.order.subtotal)}</p>` : ''}</div>`;
       icons(form);
+      const done = document.createElement('button'); done.type = 'button'; done.className = 'btn btn-outline'; done.textContent = t('Փակել'); done.addEventListener('click', closeDialog); $('.success', form).append(done);
     } catch (err) { error.textContent = err.message; error.hidden = false; button.disabled = false; }
-    finally { delete form.dataset.submitting; }
+    finally { delete form.dataset.submitting; form.removeAttribute('aria-busy'); button.textContent = t('Գրանցել պատվերը'); }
   });
   let choiceStep = 0, answers = ['', '', ''];
   const questions = [
